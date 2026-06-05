@@ -37,8 +37,15 @@ docker-compose up -d
 The infrastructure will spin up in the background. Make sure both containers are running properly using the Docker Desktop application (or via docker ps).
 
 ### 2. Running the Backend (Java)
+Navigate to the `backend` directory and run the application using the Maven wrapper:
 
-TO DO
+```bash
+cd backend
+./mvnw spring-boot:run
+```
+
+The server will start on `http://localhost:8080`.
+You can access the GraphiQL interface at `http://localhost:8080/graphiql`.
 
 ### 3. Running the Frontend (Vue.js)
 
