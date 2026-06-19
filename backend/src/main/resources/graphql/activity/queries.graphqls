@@ -1,0 +1,69 @@
+# Activity module reads — dashboard analytics over the ClickHouse event stream.
+extend type Query {
+    """
+    **Activity analytics** — read-only aggregates over the event stream, for dashboards.
+    """
+    activityModule: ActivityModuleQuery!
+}
+
+"""
+Read-only activity analytics.
+
+**Time window** — every field takes optional `from`/`to` ISO-8601 instants and
+applies a **half-open** range `from <= ts < to`. `to` is *exclusive*, so to cover
+a full calendar day use the next midnight as the upper bound. Omit either bound
+to default: `to` → now, `from` → 30 days before `to`.
+
+Example — everything for **today** (2026-06-19, UTC):
+
+```
+from: "2026-06-19T00:00:00Z"   # inclusive — start of today
+to:   "2026-06-20T00:00:00Z"   # exclusive — start of tomorrow
+```
+"""
+type ActivityModuleQuery {
+    "Totals over the window: events, distinct sessions, distinct users."
+    summary(from: String, to: String): ActivitySummary!
+
+    "Event volume broken down by type, busiest first."
+    eventsByType(from: String, to: String): [EventTypeCount!]!
+
+    "Most-interacted products over the window."
+    topProducts(from: String, to: String, limit: Int = 10): [ProductActivity!]!
+
+    "Most-interacted leaf categories over the window."
+    topCategories(from: String, to: String, limit: Int = 10): [CategoryActivity!]!
+
+    "Daily event counts, oldest first — for a time-series chart."
+    eventsPerDay(from: String, to: String): [DailyCount!]!
+}
+
+type ActivitySummary {
+    totalEvents: Int!
+    uniqueSessions: Int!
+    uniqueUsers: Int!
+}
+
+type EventTypeCount {
+    "One of the ActivityEventType values."
+    type: String!
+    count: Int!
+}
+
+type ProductActivity {
+    productId: ID!
+    "Snapshot name from the most recent event for this product."
+    productName: String
+    count: Int!
+}
+
+type CategoryActivity {
+    categoryId: ID!
+    count: Int!
+}
+
+type DailyCount {
+    "Day as ISO date (YYYY-MM-DD), UTC."
+    day: String!
+    count: Int!
+}

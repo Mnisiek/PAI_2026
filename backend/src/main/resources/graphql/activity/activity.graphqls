@@ -1,0 +1,87 @@
+# Activity module: ingests user activity events. Sink: ClickHouse (written async).
+
+"""
+Write operations, organized by **module**. Each top-level field namespaces one
+domain's mutations — open a module to see what it lets you change.
+"""
+type Mutation {
+    """
+    **Activity** — first-party behavioural analytics.
+
+    Capture what shoppers do — product views, clicks, cart adds, purchases and
+    searches — to power personalization and retargeting. Events are accepted
+    instantly and persisted in the background, so calls stay fast and never
+    block the experience.
+    """
+    activityModule: ActivityModuleMutation!
+}
+
+"""
+Activity event ingestion. Fire-and-forget: the server acknowledges the moment an
+event is queued and streams it to the analytics store asynchronously.
+"""
+type ActivityModuleMutation {
+    """
+    Record a single user activity event. Returns an acknowledgement as soon as the
+    event is accepted — persistence happens off the request path.
+    """
+    recordActivityEvent(input: ActivityEventInput!): ActivityEventAck!
+}
+
+"A single behavioural event emitted by a storefront client."
+input ActivityEventInput {
+    "Client session id; always present, even for anonymous visitors."
+    sessionId: ID!
+    "Authenticated user id, or null for anonymous/guest visitors."
+    userId: ID
+    "What the user did."
+    type: ActivityEventType!
+    "Catalog reference: the product the event relates to."
+    productId: ID
+    "Product snapshot at event time — stored alongside the event so analytics needn't join back."
+    productName: String
+    productSlug: String
+    "Leaf category the product is filed under."
+    categoryId: ID
+    "Brand snapshot."
+    brandId: ID
+    brandName: String
+    "Catalog reference: the specific offer (variant) the event relates to."
+    offerId: ID
+    "Offer snapshot at event time."
+    sku: String
+    price: Float
+    currency: String
+    "Raw query text — set for SEARCH events."
+    searchQuery: String
+    "Item count — set for ADD_TO_CART / PURCHASE events."
+    quantity: Int
+    "Page path where the event occurred."
+    url: String
+    "Referring URL, when known."
+    referrer: String
+    "Client user-agent string, for device/browser analytics."
+    userAgent: String
+}
+
+"Acknowledgement that an event was accepted for asynchronous persistence."
+type ActivityEventAck {
+    "Always true once the event is safely queued; the call fails otherwise."
+    accepted: Boolean!
+    "Server-side receipt timestamp (ISO-8601)."
+    receivedAt: String!
+}
+
+"The catalogue of trackable user actions."
+enum ActivityEventType {
+    "Viewed a product or offer."
+    VIEW
+    "Clicked a product, offer or promotion."
+    CLICK
+    "Added an offer to the cart."
+    ADD_TO_CART
+    "Completed a purchase."
+    PURCHASE
+    "Ran a catalog search."
+    SEARCH
+}
