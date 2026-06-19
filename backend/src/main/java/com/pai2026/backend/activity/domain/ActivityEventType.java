@@ -6,5 +6,6 @@ public enum ActivityEventType {
     CLICK,
     ADD_TO_CART,
     PURCHASE,
-    SEARCH
+    SEARCH,
+    PRODUCT_DETAIL
 }

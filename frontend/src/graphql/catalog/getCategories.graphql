@@ -1,0 +1,18 @@
+query GetCategories {
+  offersModule {
+    rootCategories {
+      id
+      name
+      slug
+      parentId
+      isLeaf
+      children {
+        id
+        name
+        slug
+        parentId
+        isLeaf
+      }
+    }
+  }
+}

@@ -4,6 +4,7 @@ import BaseCard from '../base/BaseCard.vue'
 import { useCurrency } from '../../composables/useCurrency'
 import type { Product } from '../../types/catalog'
 import { useCartStore } from '../../stores/cart.store'
+import { activityService } from '../../services/activity.service'
 
 interface ProductCardProps {
   product: Product
@@ -18,6 +19,10 @@ const isConfirmOpen = ref(false)
 const addToCart = (): void => {
   cartStore.addToCart(props.product)
   isConfirmOpen.value = true
+}
+
+const trackDetailClick = (): void => {
+  activityService.trackProductClick(props.product)
 }
 
 const closeConfirm = (): void => {
@@ -37,6 +42,7 @@ const handleKeydown = (event: KeyboardEvent): void => {
 
 onMounted(() => {
   window.addEventListener('keydown', handleKeydown)
+  activityService.trackProductView(props.product)
 })
 
 onBeforeUnmount(() => {
@@ -47,17 +53,31 @@ onBeforeUnmount(() => {
 <template>
   <div class="product-card-shell">
     <BaseCard class="product-card">
-      <img
-        :src="props.product.imageUrl"
-        :alt="props.product.title"
-        class="product-card__image"
-        loading="lazy"
-      />
+      <RouterLink
+        class="product-card__media"
+        :to="{ name: 'product', params: { slug: props.product.slug } }"
+        @click="trackDetailClick"
+      >
+        <img
+          :src="props.product.mainImageUrl"
+          :alt="props.product.name"
+          class="product-card__image"
+          loading="lazy"
+        />
+      </RouterLink>
 
       <div class="product-card__content">
-        <h3 class="product-card__title">{{ props.product.title }}</h3>
+        <h3 class="product-card__title">
+          <RouterLink
+            class="product-card__title-link"
+            :to="{ name: 'product', params: { slug: props.product.slug } }"
+            @click="trackDetailClick"
+          >
+            {{ props.product.name }}
+          </RouterLink>
+        </h3>
         <p class="product-card__description">{{ props.product.description }}</p>
-        <p class="product-card__price">{{ formatPrice(props.product.price) }}</p>
+        <p class="product-card__price">{{ formatPrice(props.product.priceFrom.amount) }}</p>
         <button class="product-card__action" type="button" @click="addToCart">
           Dodaj do koszyka
         </button>
@@ -76,7 +96,7 @@ onBeforeUnmount(() => {
             <p class="cart-confirm__eyebrow">Koszyk</p>
             <h4 id="cart-confirm-title">Produkt dodany</h4>
             <p class="cart-confirm__message">
-              Dodano "{{ props.product.title }}" do koszyka. Czy chcesz przejść teraz do koszyka?
+              Dodano "{{ props.product.name }}" do koszyka. Czy chcesz przejść teraz do koszyka?
             </p>
 
             <div class="cart-confirm__actions">
@@ -106,10 +126,24 @@ onBeforeUnmount(() => {
   height: 100%;
 }
 
+.product-card__media {
+  display: block;
+}
+
 .product-card__image {
   width: 100%;
   height: 198px;
   object-fit: cover;
+  display: block;
+}
+
+.product-card__title-link {
+  color: inherit;
+  text-decoration: none;
+}
+
+.product-card__title-link:hover {
+  text-decoration: underline;
 }
 
 .product-card__content {
@@ -131,6 +165,12 @@ onBeforeUnmount(() => {
   font-size: 0.9rem;
   color: var(--color-text-secondary);
   min-height: 2.5rem;
+  /* Keep cards uniform — the full prose lives on the product page. */
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 }
 
 .product-card__price {

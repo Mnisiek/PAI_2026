@@ -1,14 +1,4 @@
 import { gql } from '@apollo/client/core'
+import login from './auth/login.graphql?raw'
 
-export const LOGIN_MUTATION = gql`
-  mutation Login($input: LoginInput!) {
-    login(input: $input) {
-      token
-      user {
-        id
-        name
-        email
-      }
-    }
-  }
-`
+export const LOGIN_MUTATION = gql(login)

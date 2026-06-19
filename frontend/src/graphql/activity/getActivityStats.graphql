@@ -1,0 +1,26 @@
+query ActivityStats($from: String, $to: String) {
+  activityModule {
+    summary(from: $from, to: $to) {
+      totalEvents
+      uniqueSessions
+      uniqueUsers
+    }
+    eventsByType(from: $from, to: $to) {
+      type
+      count
+    }
+    topProducts(from: $from, to: $to, limit: 5) {
+      productId
+      productName
+      count
+    }
+    topCategories(from: $from, to: $to, limit: 5) {
+      categoryId
+      count
+    }
+    eventsPerDay(from: $from, to: $to) {
+      day
+      count
+    }
+  }
+}

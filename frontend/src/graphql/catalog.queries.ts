@@ -1,40 +1,8 @@
 import { gql } from '@apollo/client/core'
+import getCategories from './catalog/getCategories.graphql?raw'
+import getProducts from './catalog/getProducts.graphql?raw'
+import getProduct from './catalog/getProduct.graphql?raw'
 
-export const GET_CATEGORIES = gql`
-  query GetCategories {
-    offersModule {
-      rootCategories {
-        id
-        name
-        slug
-        children {
-          id
-          name
-          slug
-        }
-      }
-    }
-  }
-`
-
-export const GET_PRODUCTS = gql`
-  query GetProducts($search: String, $filter: ProductFilter) {
-    offersModule {
-      products(search: $search, filter: $filter, page: 0, size: 100) {
-        items {
-          id
-          name
-          description
-          mainImageUrl
-          priceFrom {
-            amount
-            currency
-          }
-          category {
-            id
-          }
-        }
-      }
-    }
-  }
-`
+export const GET_CATEGORIES = gql(getCategories)
+export const GET_PRODUCTS = gql(getProducts)
+export const GET_PRODUCT = gql(getProduct)
