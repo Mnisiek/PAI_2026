@@ -2,30 +2,39 @@ import { gql } from '@apollo/client/core'
 
 export const GET_CATEGORIES = gql`
   query GetCategories {
-    categories {
-      id
-      name
-      slug
-      parentId
-      children {
+    offersModule {
+      rootCategories {
         id
         name
         slug
-        parentId
+        children {
+          id
+          name
+          slug
+        }
       }
     }
   }
 `
 
 export const GET_PRODUCTS = gql`
-  query GetProducts($filter: ProductFilterInput) {
-    products(filter: $filter) {
-      id
-      title
-      price
-      imageUrl
-      categoryId
-      description
+  query GetProducts($search: String, $filter: ProductFilter) {
+    offersModule {
+      products(search: $search, filter: $filter, page: 0, size: 100) {
+        items {
+          id
+          name
+          description
+          mainImageUrl
+          priceFrom {
+            amount
+            currency
+          }
+          category {
+            id
+          }
+        }
+      }
     }
   }
 `
