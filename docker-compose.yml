@@ -29,6 +29,17 @@ services:
         soft: 262144
         hard: 262144
 
+  # Valkey (OSS Redis fork) — 9.0+ for per-hash-field TTL (HEXPIRE).
+  valkey:
+    image: valkey/valkey:9.0-alpine
+    container_name: pai-valkey
+    command: ["valkey-server", "--appendonly", "yes"]
+    ports:
+      - "6379:6379"
+    volumes:
+      - valkey_data:/data
+
 volumes:
   postgres_data:
   clickhouse_data:
+  valkey_data:
