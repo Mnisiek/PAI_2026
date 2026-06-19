@@ -1,0 +1,19 @@
+"A sellable variant of a product."
+type Offer {
+    id: ID!
+    sku: String!
+    price: Money!
+    "Original/strike-through price when discounted."
+    compareAtPrice: Money
+    stock: Int!
+    status: OfferStatus!
+    "Variant axes + filterable values for this offer."
+    attributes: [AttributeValue!]!
+    "Variant-specific images (e.g. the blue photos)."
+    images: [Image!]!
+}
+
+enum OfferStatus {
+    ACTIVE
+    INACTIVE
+}

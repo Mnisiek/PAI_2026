@@ -1,0 +1,41 @@
+"The catalog concept. Holds everything shared across variants; no price/stock."
+type Product {
+    id: ID!
+    slug: String!
+    name: String!
+    description: String
+    brand: Brand
+    category: Category!
+    "Materialized {root,…,leaf} chain for breadcrumbs."
+    breadcrumbs: [Category!]!
+    mainImageUrl: String
+    "Display-only, non-filterable details."
+    specs: [Spec!]!
+    status: ProductStatus!
+    offers: [Offer!]!
+    "Lowest active offer price — for 'from X' on listings."
+    priceFrom: Money
+    "A sensible default offer to preselect (e.g. cheapest in stock)."
+    defaultOffer: Offer
+}
+
+type ProductPage {
+    items: [Product!]!
+    total: Int!
+    page: Int!
+    size: Int!
+    hasNext: Boolean!
+}
+
+enum ProductStatus {
+    DRAFT
+    ACTIVE
+    ARCHIVED
+}
+
+enum ProductSort {
+    RELEVANCE
+    PRICE_ASC
+    PRICE_DESC
+    NEWEST
+}

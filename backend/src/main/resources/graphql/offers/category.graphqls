@@ -1,0 +1,11 @@
+"Navigation node. Only leaves carry products and declare filterable params."
+type Category {
+    id: ID!
+    name: String!
+    slug: String!
+    parent: Category
+    children: [Category!]!
+    isLeaf: Boolean!
+    "Params declared for this (leaf) category — drives the filter UI."
+    attributes: [AttributeDef!]!
+}

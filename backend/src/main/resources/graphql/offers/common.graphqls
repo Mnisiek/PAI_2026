@@ -1,0 +1,16 @@
+# Shared leaf types reused across the catalog.
+
+type Spec {
+    key: String!
+    value: String!
+}
+
+type Image {
+    url: String!
+    alt: String
+}
+
+type Money {
+    amount: Float!
+    currency: String!
+}

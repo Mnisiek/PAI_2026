@@ -1,0 +1,14 @@
+"""
+The PAI storefront API.
+
+Operations are organized by **module** — each top-level field is a namespace that
+groups one domain's operations (e.g. `offersModule` for the catalog). This keeps
+the API discoverable as it grows: open a module to see everything it offers.
+"""
+type Query {
+    """
+    Liveness probe. Returns `"OK"` when the API is reachable — a cheap first call
+    to confirm connectivity before issuing real queries.
+    """
+    healthCheck: String!
+}

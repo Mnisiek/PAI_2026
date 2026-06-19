@@ -1,0 +1,17 @@
+input ProductFilter {
+    categorySlug: ID
+    brandSlugs: [ID!]
+    priceMin: Float
+    priceMax: Float
+    inStock: Boolean
+    "Param filters — match the codes declared on the leaf category."
+    attributes: [AttributeFilterInput!]
+}
+
+"One param filter. Use `values` for TEXT/BOOL, `min`/`max` for NUMBER ranges."
+input AttributeFilterInput {
+    code: String!
+    values: [String!]
+    min: Float
+    max: Float
+}

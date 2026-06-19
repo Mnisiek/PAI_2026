@@ -1,0 +1,47 @@
+# Offers module reads, namespaced under Query.offersModule.
+extend type Query {
+    """
+    **Offers** — the product catalog.
+
+    Everything a storefront needs to browse and sell: products and their
+    purchasable offers, the category navigation tree, and live filter facets.
+    Open this namespace to discover all catalog read operations.
+    """
+    offersModule: OffersModuleQuery!
+}
+
+"""
+Catalog reads. Browse the category tree, open a product detail page, run a
+filtered and searched product listing, or load the filter sidebar for a
+leaf category.
+"""
+type OffersModuleQuery {
+    "Fetch a single product, with its offers, by slug — powers the product detail page."
+    product(slug: ID!): Product
+
+    """
+    The listing grid: a paged, filterable, full-text-searchable slice of products.
+    `search` runs a fast `ILIKE` over each product's indexed search text; `filter`
+    narrows by category, brand, price and declared params; `sort` orders the result.
+    """
+    products(
+        search: String
+        filter: ProductFilter
+        sort: ProductSort = RELEVANCE
+        page: Int = 0
+        size: Int = 24
+    ): ProductPage!
+
+    "Resolve a category by slug — for navigation and, on leaves, its declared filter params."
+    category(slug: ID!): Category
+
+    "The roots of the navigation tree (categories with no parent)."
+    rootCategories: [Category!]!
+
+    """
+    Filter facets available for a leaf category, with option counts and numeric
+    ranges derived from the offers currently in that category — so the UI only
+    ever shows filters that would actually return results.
+    """
+    facets(categorySlug: ID!, search: String, filter: ProductFilter): [Facet!]!
+}

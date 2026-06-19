@@ -1,0 +1,28 @@
+# The param "bag": categories declare AttributeDefs; offers carry AttributeValues.
+
+"Declaration of a param allowed on a category."
+type AttributeDef {
+    code: String!
+    name: String!
+    dataType: AttributeDataType!
+    unit: String
+    isVariantAxis: Boolean!
+    filterable: Boolean!
+}
+
+"A concrete value an offer holds for a param."
+type AttributeValue {
+    code: String!
+    name: String!
+    dataType: AttributeDataType!
+    unit: String
+    textValue: String
+    numValue: Float
+    boolValue: Boolean
+}
+
+enum AttributeDataType {
+    TEXT
+    NUMBER
+    BOOL
+}

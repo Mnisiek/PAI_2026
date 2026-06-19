@@ -1,0 +1,18 @@
+# Filter options for a leaf category. Counts/ranges are derived from current offers.
+
+type Facet {
+    code: String!
+    name: String!
+    dataType: AttributeDataType!
+    unit: String
+    "Distinct values + counts (TEXT/BOOL facets)."
+    options: [FacetOption!]!
+    "Observed range (NUMBER facets)."
+    min: Float
+    max: Float
+}
+
+type FacetOption {
+    value: String!
+    count: Int!
+}
