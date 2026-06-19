@@ -35,6 +35,8 @@ const openCart = (): void => {
     </div>
 
     <div class="top-nav__actions">
+      <RouterLink class="top-nav__account-link" to="/admin">Panel</RouterLink>
+
       <RouterLink class="top-nav__account-link" :to="authStore.isAuthenticated ? '/' : '/login'">
         {{ accountLabel }}
       </RouterLink>

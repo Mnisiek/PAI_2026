@@ -1,0 +1,50 @@
+query GetProduct($slug: ID!) {
+  offersModule {
+    product(slug: $slug) {
+      id
+      slug
+      name
+      description
+      mainImageUrl
+      priceFrom {
+        amount
+        currency
+      }
+      offers {
+        id
+        sku
+        price {
+          amount
+          currency
+        }
+        stock
+        status
+        attributes {
+          code
+          name
+          dataType
+          unit
+          textValue
+          numValue
+          boolValue
+        }
+      }
+      specs {
+        key
+        value
+      }
+      brand {
+        id
+        name
+        slug
+      }
+      category {
+        id
+        name
+        slug
+        parentId
+        isLeaf
+      }
+    }
+  }
+}

@@ -74,10 +74,12 @@ type ActivityEventAck {
 
 "The catalogue of trackable user actions."
 enum ActivityEventType {
-    "Viewed a product or offer."
+    "Product impression, e.g. seen in a listing grid."
     VIEW
     "Clicked a product, offer or promotion."
     CLICK
+    "Opened a product detail page — a strong purchase-intent signal."
+    PRODUCT_DETAIL
     "Added an offer to the cart."
     ADD_TO_CART
     "Completed a purchase."

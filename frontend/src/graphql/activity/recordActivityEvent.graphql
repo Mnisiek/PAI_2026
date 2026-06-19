@@ -1,0 +1,8 @@
+mutation RecordActivityEvent($input: ActivityEventInput!) {
+  activityModule {
+    recordActivityEvent(input: $input) {
+      accepted
+      receivedAt
+    }
+  }
+}

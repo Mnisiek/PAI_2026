@@ -1,13 +1,25 @@
 import { apolloClient } from './apolloClient'
-import { GET_CATEGORIES, GET_PRODUCTS } from '../graphql/catalog.queries'
+import { GET_CATEGORIES, GET_PRODUCT, GET_PRODUCTS } from '../graphql/catalog.queries'
 import type { CatalogFilterInput, Category, Product } from '../types/catalog'
 
 interface CategoriesResponse {
-  categories: Category[]
+  offersModule: {
+    rootCategories: Category[]
+  }
 }
 
 interface ProductsResponse {
-  products: Product[]
+  offersModule: {
+    products: {
+      items: Product[]
+    }
+  }
+}
+
+interface ProductResponse {
+  offersModule: {
+    product: Product | null
+  }
 }
 
 const sleep = (ms: number): Promise<void> =>
@@ -16,6 +28,10 @@ const sleep = (ms: number): Promise<void> =>
   })
 
 const randomLatency = (): number => 250 + Math.floor(Math.random() * 550)
+
+// Flatten the rootCategories tree into the flat (parentId-based) list the store expects.
+const flattenCategories = (roots: Category[]): Category[] =>
+  roots.flatMap((root) => [root, ...(root.children ?? [])])
 
 export const catalogService = {
   async getCategories(): Promise<Category[]> {
@@ -29,7 +45,7 @@ export const catalogService = {
       throw new Error('Categories query returned no data.')
     }
 
-    return data.categories
+    return flattenCategories(data.offersModule.rootCategories)
   },
 
   async getProducts(filter: CatalogFilterInput): Promise<Product[]> {
@@ -44,6 +60,21 @@ export const catalogService = {
       throw new Error('Products query returned no data.')
     }
 
-    return data.products
+    return data.offersModule.products.items
+  },
+
+  async getProductBySlug(slug: string): Promise<Product | null> {
+    await sleep(randomLatency())
+
+    const { data } = await apolloClient.query<ProductResponse, { slug: string }>({
+      query: GET_PRODUCT,
+      variables: { slug },
+    })
+
+    if (!data) {
+      throw new Error('Product query returned no data.')
+    }
+
+    return data.offersModule.product
   },
 }

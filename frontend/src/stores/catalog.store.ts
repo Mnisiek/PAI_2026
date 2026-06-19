@@ -1,5 +1,6 @@
 import { defineStore } from 'pinia'
 import { catalogService } from '../services/catalog.service'
+import { activityService } from '../services/activity.service'
 import type { Category, Product } from '../types/catalog'
 
 interface CatalogState {
@@ -109,6 +110,7 @@ export const useCatalogStore = defineStore('catalog', {
 
     async setSearchQuery(query: string): Promise<void> {
       this.searchQuery = query
+      activityService.trackSearch(query)
       await this.refreshProducts()
     },
 

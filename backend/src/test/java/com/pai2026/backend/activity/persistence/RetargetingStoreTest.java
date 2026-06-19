@@ -28,8 +28,13 @@ class RetargetingStoreTest {
     HashOperations<String, Object, Object> hashOps;
 
     private ActivityEvent event(String userId, String sessionId, Long categoryId, Long productId) {
+        return eventOf(ActivityEventType.PRODUCT_DETAIL, userId, sessionId, categoryId, productId);
+    }
+
+    private ActivityEvent eventOf(
+            ActivityEventType type, String userId, String sessionId, Long categoryId, Long productId) {
         return new ActivityEvent(
-                Instant.parse("2026-06-19T10:00:00Z"), ActivityEventType.VIEW,
+                Instant.parse("2026-06-19T10:00:00Z"), type,
                 userId, sessionId, productId, "iPhone 15", "iphone-15", categoryId, 3L, "Apple",
                 12L, "IP15", null, "PLN", null, null, "/p/iphone-15", null, "UA");
     }
@@ -73,5 +78,26 @@ class RetargetingStoreTest {
         store.record(event("user-9", "sess-1", null, null));
 
         verify(redis, never()).opsForHash();
+    }
+
+    @Test
+    void ignoresNonRetargetingEventTypes() {
+        RetargetingStore store = new RetargetingStore(redis, 30);
+
+        // A grid VIEW carrying ids must still be ignored — only PRODUCT_DETAIL/ADD_TO_CART/PURCHASE count.
+        store.record(eventOf(ActivityEventType.VIEW, "user-9", "sess-1", 7L, 1L));
+
+        verify(redis, never()).opsForHash();
+    }
+
+    @Test
+    void storesTheEventTypeAndTimestampAsTheValue() {
+        doReturn(hashOps).when(redis).opsForHash();
+        RetargetingStore store = new RetargetingStore(redis, 30);
+
+        store.record(eventOf(ActivityEventType.PURCHASE, "user-9", "sess-1", null, 1L));
+
+        long ts = Instant.parse("2026-06-19T10:00:00Z").toEpochMilli();
+        verify(hashOps).put("retarget:user:user-9", "product:1", "PURCHASE:" + ts);
     }
 }

@@ -53,36 +53,41 @@ INSERT INTO ${CH_DB}.activity_event
      category_id, brand_id, brand_name, offer_id, sku, price, currency,
      search_query, quantity, url, referrer, user_agent) VALUES
 -- user-1042: browses, carts and buys an iPhone (today)
-(now() - INTERVAL 10 MINUTE, 'VIEW',        'user-1042', 'sess-a1', 1, 'iPhone 15', 'iphone-15', 7, 3, 'Apple',   12, 'IP15-128-BLK', 3999.00, 'PLN', NULL, NULL, '/p/iphone-15',     '/c/phones',     'Mozilla/5.0'),
+(now() - INTERVAL 10 MINUTE, 'PRODUCT_DETAIL',        'user-1042', 'sess-a1', 1, 'iPhone 15', 'iphone-15', 7, 3, 'Apple',   12, 'IP15-128-BLK', 3999.00, 'PLN', NULL, NULL, '/p/iphone-15',     '/c/phones',     'Mozilla/5.0'),
 (now() - INTERVAL 8  MINUTE, 'CLICK',       'user-1042', 'sess-a1', 1, 'iPhone 15', 'iphone-15', 7, 3, 'Apple',   12, 'IP15-128-BLK', 3999.00, 'PLN', NULL, NULL, '/p/iphone-15',     '/p/iphone-15',  'Mozilla/5.0'),
 (now() - INTERVAL 7  MINUTE, 'ADD_TO_CART', 'user-1042', 'sess-a1', 1, 'iPhone 15', 'iphone-15', 7, 3, 'Apple',   12, 'IP15-128-BLK', 3999.00, 'PLN', NULL, 1,    '/p/iphone-15',     '/p/iphone-15',  'Mozilla/5.0'),
 (now() - INTERVAL 5  MINUTE, 'PURCHASE',    'user-1042', 'sess-a1', 1, 'iPhone 15', 'iphone-15', 7, 3, 'Apple',   12, 'IP15-128-BLK', 3999.00, 'PLN', NULL, 1,    '/checkout/success','/cart',         'Mozilla/5.0'),
-(now() - INTERVAL 1  DAY,    'VIEW',        'user-1042', 'sess-a1', 5, 'Galaxy S24','galaxy-s24',7, 4, 'Samsung', 31, 'SGS24-256',    3499.00, 'PLN', NULL, NULL, '/p/galaxy-s24',    '/c/phones',     'Mozilla/5.0'),
+(now() - INTERVAL 1  DAY,    'PRODUCT_DETAIL',        'user-1042', 'sess-a1', 5, 'Galaxy S24','galaxy-s24',7, 4, 'Samsung', 31, 'SGS24-256',    3499.00, 'PLN', NULL, NULL, '/p/galaxy-s24',    '/c/phones',     'Mozilla/5.0'),
 -- user-2087: phones + audio, plus a search
-(now() - INTERVAL 2  HOUR,   'VIEW',        'user-2087', 'sess-b2', 5, 'Galaxy S24','galaxy-s24',7, 4, 'Samsung', 31, 'SGS24-256',    3499.00, 'PLN', NULL, NULL, '/p/galaxy-s24',    '/c/phones',     'Mozilla/5.0'),
+(now() - INTERVAL 2  HOUR,   'PRODUCT_DETAIL',        'user-2087', 'sess-b2', 5, 'Galaxy S24','galaxy-s24',7, 4, 'Samsung', 31, 'SGS24-256',    3499.00, 'PLN', NULL, NULL, '/p/galaxy-s24',    '/c/phones',     'Mozilla/5.0'),
 (now() - INTERVAL 1  DAY,    'SEARCH',      'user-2087', 'sess-b2', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'wireless earbuds', NULL, '/search?q=wireless+earbuds', NULL, 'Mozilla/5.0'),
-(now() - INTERVAL 3  DAY,    'VIEW',        'user-2087', 'sess-b2', 8, 'AirPods Pro','airpods-pro',8, 3, 'Apple',  40, 'APP-2',        1099.00, 'PLN', NULL, NULL, '/p/airpods-pro',   '/search',       'Mozilla/5.0'),
+(now() - INTERVAL 3  DAY,    'PRODUCT_DETAIL',        'user-2087', 'sess-b2', 8, 'AirPods Pro','airpods-pro',8, 3, 'Apple',  40, 'APP-2',        1099.00, 'PLN', NULL, NULL, '/p/airpods-pro',   '/search',       'Mozilla/5.0'),
 (now() - INTERVAL 5  DAY,    'PURCHASE',    'user-2087', 'sess-b2', 8, 'AirPods Pro','airpods-pro',8, 3, 'Apple',  40, 'APP-2',        1099.00, 'PLN', NULL, 2,    '/checkout/success','/cart',         'Mozilla/5.0'),
 -- guest session: just browsing the iPhone
-(now() - INTERVAL 2  DAY,    'VIEW',        NULL,        'sess-guest-9', 1, 'iPhone 15','iphone-15',7, 3, 'Apple', 12, 'IP15-128-BLK', 3999.00, 'PLN', NULL, NULL, '/p/iphone-15',    '/',             'Mozilla/5.0'),
+(now() - INTERVAL 2  DAY,    'PRODUCT_DETAIL',        NULL,        'sess-guest-9', 1, 'iPhone 15','iphone-15',7, 3, 'Apple', 12, 'IP15-128-BLK', 3999.00, 'PLN', NULL, NULL, '/p/iphone-15',    '/',             'Mozilla/5.0'),
 (now() - INTERVAL 2  DAY,    'CLICK',       NULL,        'sess-guest-9', 1, 'iPhone 15','iphone-15',7, 3, 'Apple', 12, 'IP15-128-BLK', 3999.00, 'PLN', NULL, NULL, '/p/iphone-15',    '/p/iphone-15',  'Mozilla/5.0');
 SQL
 
 echo "==> Valkey: reset & seed retargeting hashes"
 vk DEL retarget:user:user-1042 retarget:user:user-2087 retarget:sess:sess-guest-9
 
-# user-1042 — recent iPhone interest (today) + a Galaxy view (yesterday)
-vk HSET retarget:user:user-1042 category:7 "$NOW_MS" product:1 "$NOW_MS" product:5 "$(( NOW_MS - DAY_MS ))"
+# Values encode WHAT happened and WHEN: "<EVENT_TYPE>:<epochMillis>".
+# Only PRODUCT_DETAIL, ADD_TO_CART and PURCHASE belong here.
+
+# user-1042 — bought an iPhone today, viewed a Galaxy yesterday
+vk HSET retarget:user:user-1042 \
+    category:7 "PURCHASE:$NOW_MS" product:1 "PURCHASE:$NOW_MS" product:5 "PRODUCT_DETAIL:$(( NOW_MS - DAY_MS ))"
 vk HEXPIRE retarget:user:user-1042 "$TTL_SECONDS" FIELDS 3 category:7 product:1 product:5
 
-# user-2087 — phones + audio
+# user-2087 — phones (viewed) + audio (purchased)
 vk HSET retarget:user:user-2087 \
-    category:7 "$(( NOW_MS - 2 * 3600000 ))" category:8 "$(( NOW_MS - 3 * DAY_MS ))" \
-    product:5 "$(( NOW_MS - 2 * 3600000 ))" product:8 "$(( NOW_MS - 3 * DAY_MS ))"
+    category:7 "PRODUCT_DETAIL:$(( NOW_MS - 2 * 3600000 ))" category:8 "PURCHASE:$(( NOW_MS - 3 * DAY_MS ))" \
+    product:5 "PRODUCT_DETAIL:$(( NOW_MS - 2 * 3600000 ))" product:8 "PURCHASE:$(( NOW_MS - 3 * DAY_MS ))"
 vk HEXPIRE retarget:user:user-2087 "$TTL_SECONDS" FIELDS 4 category:7 category:8 product:5 product:8
 
-# guest session
-vk HSET retarget:sess:sess-guest-9 category:7 "$(( NOW_MS - 2 * DAY_MS ))" product:1 "$(( NOW_MS - 2 * DAY_MS ))"
+# guest session — viewed the iPhone
+vk HSET retarget:sess:sess-guest-9 \
+    category:7 "PRODUCT_DETAIL:$(( NOW_MS - 2 * DAY_MS ))" product:1 "PRODUCT_DETAIL:$(( NOW_MS - 2 * DAY_MS ))"
 vk HEXPIRE retarget:sess:sess-guest-9 "$TTL_SECONDS" FIELDS 2 category:7 product:1
 
 echo "==> Done. Verifying:"
