@@ -49,6 +49,10 @@ public class Category {
         return parent;
     }
 
+    public Long getParentId() {
+        return parent != null ? parent.getId() : null;
+    }
+
     public void setParent(Category parent) {
         this.parent = parent;
     }

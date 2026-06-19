@@ -3,6 +3,7 @@ type Category {
     id: ID!
     name: String!
     slug: String!
+    parentId: ID
     parent: Category
     children: [Category!]!
     isLeaf: Boolean!
