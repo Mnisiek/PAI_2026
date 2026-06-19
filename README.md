@@ -49,4 +49,42 @@ You can access the GraphiQL interface at `http://localhost:8080/graphiql`.
 
 ### 3. Running the Frontend (Vue.js)
 
-TO DO
+#### Prerequisites
+
+- Node.js 20 or newer
+- npm 10 or newer
+
+#### Installation
+
+1. Open a terminal in the project directory.
+2. Go to `./frontend` directory.
+3. Install dependencies:
+
+~~~bash
+npm install
+~~~
+
+3. Start the development server:
+
+~~~bash
+npm run dev
+~~~
+
+4. Open the local URL shown in the terminal (typically http://localhost:5173).
+
+#### Windows PowerShell Note
+
+If execution policy blocks npm.ps1, use npm.cmd instead:
+
+~~~bash
+npm.cmd install
+npm.cmd run dev
+~~~
+
+#### Available Scripts
+
+~~~bash
+npm run dev      # Start development server
+npm run build    # Type check and create production build
+npm run preview  # Preview production build locally
+~~~
