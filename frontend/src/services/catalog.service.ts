@@ -1,4 +1,4 @@
-import { apolloClient } from './apolloClient'
+import { getApolloClient } from '../apollo clients/apolloClient'
 import { GET_CATEGORIES, GET_PRODUCT, GET_PRODUCTS } from '../graphql/catalog.queries'
 import type { CatalogFilterInput, Category, Product } from '../types/catalog'
 
@@ -36,8 +36,9 @@ const flattenCategories = (roots: Category[]): Category[] =>
 export const catalogService = {
   async getCategories(): Promise<Category[]> {
     await sleep(randomLatency())
+    const client = getApolloClient()
 
-    const { data } = await apolloClient.query<CategoriesResponse>({
+    const { data } = await client.query<CategoriesResponse>({
       query: GET_CATEGORIES,
     })
 
@@ -50,8 +51,9 @@ export const catalogService = {
 
   async getProducts(filter: CatalogFilterInput): Promise<Product[]> {
     await sleep(randomLatency())
+    const client = getApolloClient()
 
-    const { data } = await apolloClient.query<ProductsResponse, { filter: CatalogFilterInput }>({
+    const { data } = await client.query<ProductsResponse, { filter: CatalogFilterInput }>({
       query: GET_PRODUCTS,
       variables: { filter },
     })
@@ -65,8 +67,9 @@ export const catalogService = {
 
   async getProductBySlug(slug: string): Promise<Product | null> {
     await sleep(randomLatency())
+    const client = getApolloClient()
 
-    const { data } = await apolloClient.query<ProductResponse, { slug: string }>({
+    const { data } = await client.query<ProductResponse, { slug: string }>({
       query: GET_PRODUCT,
       variables: { slug },
     })
