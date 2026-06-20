@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { computed, ref } from 'vue'
 import MainLayout from '../layouts/MainLayout.vue'
 import BaseCard from '../components/base/BaseCard.vue'
 import SkeletonLoader from '../components/base/SkeletonLoader.vue'
@@ -56,7 +56,7 @@ const loadStats = async (): Promise<void> => {
   }
 }
 
-onMounted(loadStats)
+await useAsyncData('admin-activity-stats', loadStats)
 </script>
 
 <template>

@@ -2,9 +2,9 @@
 
 <template>
   <nav class="admin-nav" aria-label="Nawigacja panelu administracyjnego">
-    <RouterLink class="admin-nav__tab" :to="{ name: 'admin' }">Statystyki</RouterLink>
-    <RouterLink class="admin-nav__tab" :to="{ name: 'admin-catalog' }">Produkty i oferty</RouterLink>
-    <RouterLink class="admin-nav__tab" :to="{ name: 'admin-categories' }">Kategorie</RouterLink>
+    <NuxtLink class="admin-nav__tab" to="/admin">Statystyki</NuxtLink>
+    <NuxtLink class="admin-nav__tab" to="/admin/catalog">Produkty i oferty</NuxtLink>
+    <NuxtLink class="admin-nav__tab" to="/admin/categories">Kategorie</NuxtLink>
   </nav>
 </template>
 

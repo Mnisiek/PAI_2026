@@ -61,7 +61,8 @@ const findDescendantIds = (categoryId: string): Set<string> => {
 }
 
 const generateMockToken = (email: string): string => {
-  const encodedEmail = btoa(email)
+  const encodedEmail =
+    typeof btoa === 'function' ? btoa(email) : Buffer.from(email, 'utf-8').toString('base64')
   return `mock-token-${encodedEmail}-${Date.now()}`
 }
 

@@ -1,99 +1,104 @@
-# Ecommerce Frontend
+# Ecommerce Frontend (Nuxt 3 SSR)
 
-A Vue 3 + TypeScript ecommerce frontend focused on a product offers page with search and category filtering.
+Frontend sklepu ecommerce oparty o Nuxt 3 z Server-Side Rendering. Aplikacja zachowuje dotychczasową funkcjonalność (oferty, filtrowanie, PDP, koszyk, logowanie i panel admina), a kluczowe strony są renderowane po stronie serwera.
 
 ## Tech Stack
 
-- Vue 3 (Composition API, script setup)
-- TypeScript
-- Vite
-- Pinia
-- Vue Router
-- GraphQL with Apollo Client
-- GraphQL mock schema via GraphQL Tools
+- Nuxt 3 (SSR)
+- Vue 3 + TypeScript
+- Pinia (przez `@pinia/nuxt`)
+- GraphQL + Apollo Client
+- Mock GraphQL schema (`@graphql-tools/schema`)
 - Tailwind CSS
 - VueUse
 
-## Current Scope
+## Zakres funkcjonalny
 
-- Product offers page
-- Search bar
-- Category and subcategory filter pills
-- Product grid with cards
-- Loading skeleton state
-- Cart
-- Login page
-- Mock GraphQL data source (no real backend required)
+- Lista ofert z wyszukiwaniem i filtrowaniem kategorii
+- Karta produktu (`/product/[slug]`)
+- Koszyk z pamięcią stanu po stronie klienta
+- Logowanie mock użytkownika
+- Panel administracyjny:
+	- Statystyki aktywności
+	- Zarządzanie produktami/ofertami
+	- Zarządzanie kategoriami
 
-## Project Structure
+## Struktura projektu
 
 ~~~text
 ecommerce-frontend/
+	nuxt.config.ts
 	src/
+		app.vue
+		pages/             # Routing oparty o system plików Nuxt
+			index.vue
+			login.vue
+			product/[slug].vue
+			admin/
+				index.vue
+				catalog.vue
+				categories.vue
+		views/             # Dotychczasowe widoki podpięte pod pages
 		components/
-			base/         # Reusable UI building blocks
-			catalog/      # Catalog-specific UI (search, categories, products)
-			navigation/   # Top navigation components
-		composables/    # Reusable Composition API helpers
-		graphql/        # GraphQL queries
-		layouts/        # App/page layouts
-		mocks/          # Mock catalog data
-		router/         # Route definitions
-		services/       # Apollo client and API services
-		stores/         # Pinia stores
-		types/          # TypeScript domain models
-		views/          # Route views
+		composables/
+		graphql/
+		layouts/
+		mocks/
+		plugins/
+			persisted-state.client.ts
+		services/
+		stores/
+		types/
 ~~~
 
-## Getting Started
+## Wymagania
 
-### Prerequisites
+- Node.js 20+
+- npm 10+
 
-- Node.js 20 or newer
-- npm 10 or newer
+## Uruchomienie
 
-### Installation
-
-1. Open a terminal in the project directory.
-2. Install dependencies:
+1. Zainstaluj zależności:
 
 ~~~bash
 npm install
 ~~~
 
-3. Start the development server:
+2. Uruchom środowisko developerskie:
 
 ~~~bash
 npm run dev
 ~~~
 
-4. Open the local URL shown in the terminal (typically http://localhost:5173).
+3. Otwórz adres wyświetlony w terminalu (domyślnie `http://localhost:3000`).
 
-### Windows PowerShell Note
-
-If execution policy blocks npm.ps1, use npm.cmd instead:
+## Skrypty
 
 ~~~bash
-npm.cmd install
-npm.cmd run dev
+npm run dev      # Nuxt dev server (SSR)
+npm run build    # Build produkcyjny Nuxt
+npm run preview  # Podgląd buildu produkcyjnego
 ~~~
 
-## Available Scripts
+## Konfiguracja środowiska
+
+Publiczny endpoint dla activity GraphQL można nadpisać zmienną:
 
 ~~~bash
-npm run dev      # Start development server
-npm run build    # Type check and create production build
-npm run preview  # Preview production build locally
+NUXT_PUBLIC_ACTIVITY_API=/graphql
 ~~~
 
-## Mock Data
+Domyślnie Nuxt proxuje `/graphql` na `http://localhost:8080/graphql` (zobacz `nuxt.config.ts`).
 
-Catalog data is defined in:
+## SSR i stan klienta
 
-- src/mocks/catalogData.ts
+- Dane dla głównych widoków są ładowane przez `useAsyncData`, co pozwala renderować strony po stronie serwera.
+- Stan `auth` i `cart` jest rehydratowany z `localStorage` tylko po stronie klienta (`src/plugins/persisted-state.client.ts`), co zapobiega błędom SSR i zachowuje dotychczasowe działanie.
 
-You can update products and categories there without changing UI components.
+## Mock danych
 
-## Build Output
+Katalog mockowy znajduje się w:
 
-The production build is generated in the dist directory.
+- `src/mocks/catalogData.ts`
+
+Zmiany danych mock nie wymagają modyfikacji warstwy UI.
