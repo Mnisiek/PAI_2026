@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { computed, ref } from 'vue'
 import MainLayout from '../layouts/MainLayout.vue'
 import SearchBar from '../components/catalog/SearchBar.vue'
 import CategoryPills from '../components/catalog/CategoryPills.vue'
@@ -35,8 +35,9 @@ const applySearch = (): void => {
   void catalogStore.setSearchQuery(searchQuery.value)
 }
 
-onMounted(() => {
-  void catalogStore.loadInitialData()
+await useAsyncData('catalog-initial-data', async () => {
+  await catalogStore.loadInitialData()
+  return true
 })
 </script>
 

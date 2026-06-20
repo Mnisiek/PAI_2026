@@ -24,7 +24,7 @@ interface ProductResponse {
 
 const sleep = (ms: number): Promise<void> =>
   new Promise((resolve) => {
-    window.setTimeout(resolve, ms)
+    setTimeout(resolve, ms)
   })
 
 const randomLatency = (): number => 250 + Math.floor(Math.random() * 550)

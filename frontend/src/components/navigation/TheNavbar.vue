@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { computed, useSlots } from 'vue'
-import { RouterLink } from 'vue-router'
 import { useAuthStore } from '../../stores/auth.store'
 import { useCartStore } from '../../stores/cart.store'
 
@@ -35,11 +34,11 @@ const openCart = (): void => {
     </div>
 
     <div class="top-nav__actions">
-      <RouterLink class="top-nav__account-link" to="/admin">Panel</RouterLink>
+      <NuxtLink class="top-nav__account-link" to="/admin">Panel</NuxtLink>
 
-      <RouterLink class="top-nav__account-link" :to="authStore.isAuthenticated ? '/' : '/login'">
+      <NuxtLink class="top-nav__account-link" :to="authStore.isAuthenticated ? '/' : '/login'">
         {{ accountLabel }}
-      </RouterLink>
+      </NuxtLink>
 
       <button type="button" class="top-nav__cart-button" @click="openCart">
         Koszyk
