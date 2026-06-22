@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
-import { useRoute } from 'vue-router'
+
 import MainLayout from '../layouts/MainLayout.vue'
 import BaseCard from '../components/base/BaseCard.vue'
 import SkeletonLoader from '../components/base/SkeletonLoader.vue'
@@ -10,7 +10,6 @@ import { useCartStore } from '../stores/cart.store'
 import { useCurrency } from '../composables/useCurrency'
 import type { AttributeValue, Offer, Product } from '../types/catalog'
 
-const route = useRoute()
 const cartStore = useCartStore()
 const { formatPrice } = useCurrency()
 
@@ -48,6 +47,7 @@ const loadProduct = async (): Promise<void> => {
   error.value = null
 
   try {
+    const route = useRoute()
     const slug = String(route.params.slug)
     const found = await catalogService.getProductBySlug(slug)
 
