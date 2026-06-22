@@ -17,6 +17,10 @@ interface PersistedAuthState {
 const AUTH_STORAGE_KEY = 'ecommerce-auth-state'
 
 const readAuthFromStorage = (): PersistedAuthState => {
+  if (!import.meta.client) {
+    return { user: null, token: null }
+  }
+
   try {
     const rawValue = window.localStorage.getItem(AUTH_STORAGE_KEY)
 
@@ -36,6 +40,10 @@ const readAuthFromStorage = (): PersistedAuthState => {
 }
 
 const persistAuthState = (state: PersistedAuthState): void => {
+  if (!import.meta.client) {
+    return
+  }
+
   window.localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(state))
 }
 
@@ -49,12 +57,10 @@ const errorToMessage = (error: unknown): string => {
   return defaultErrorMessage
 }
 
-const persistedState = readAuthFromStorage()
-
 export const useAuthStore = defineStore('auth', {
   state: (): AuthState => ({
-    user: persistedState.user,
-    token: persistedState.token,
+    user: null,
+    token: null,
     isLoading: false,
     error: null,
   }),
@@ -64,6 +70,12 @@ export const useAuthStore = defineStore('auth', {
   },
 
   actions: {
+    hydrateFromStorage(): void {
+      const persistedState = readAuthFromStorage()
+      this.user = persistedState.user
+      this.token = persistedState.token
+    },
+
     async login(email: string, password: string): Promise<boolean> {
       this.error = null
       this.isLoading = true

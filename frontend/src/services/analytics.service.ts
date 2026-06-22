@@ -1,4 +1,4 @@
-import { activityClient } from './activityClient'
+import { getActivityClient } from './activityClient'
 import { ACTIVITY_STATS } from '../graphql/activity.queries'
 import type { ActivityStats } from '../types/activity'
 
@@ -9,7 +9,7 @@ interface ActivityStatsResponse {
 export const analyticsService = {
   // Reads dashboard aggregates from the real backend (ClickHouse-backed).
   async getActivityStats(): Promise<ActivityStats> {
-    const { data } = await activityClient.query<ActivityStatsResponse>({
+    const { data } = await getActivityClient().query<ActivityStatsResponse>({
       query: ACTIVITY_STATS,
       fetchPolicy: 'no-cache',
     })

@@ -53,9 +53,9 @@ onBeforeUnmount(() => {
 <template>
   <div class="product-card-shell">
     <BaseCard class="product-card">
-      <RouterLink
+      <NuxtLink
         class="product-card__media"
-        :to="{ name: 'product', params: { slug: props.product.slug } }"
+        :to="`/product/${props.product.slug}`"
         @click="trackDetailClick"
       >
         <img
@@ -64,17 +64,17 @@ onBeforeUnmount(() => {
           class="product-card__image"
           loading="lazy"
         />
-      </RouterLink>
+      </NuxtLink>
 
       <div class="product-card__content">
         <h3 class="product-card__title">
-          <RouterLink
+          <NuxtLink
             class="product-card__title-link"
-            :to="{ name: 'product', params: { slug: props.product.slug } }"
+            :to="`/product/${props.product.slug}`"
             @click="trackDetailClick"
           >
             {{ props.product.name }}
-          </RouterLink>
+          </NuxtLink>
         </h3>
         <p class="product-card__description">{{ props.product.description }}</p>
         <p class="product-card__price">{{ formatPrice(props.product.priceFrom.amount) }}</p>

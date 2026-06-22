@@ -23,6 +23,13 @@ interface ProductResponse {
   }
 }
 
+const sleep = (ms: number): Promise<void> =>
+  new Promise((resolve) => {
+    setTimeout(resolve, ms)
+  })
+
+const randomLatency = (): number => 250 + Math.floor(Math.random() * 550)
+
 // Flatten the rootCategories tree into the flat (parentId-based) list the store expects.
 const flattenCategories = (roots: Category[]): Category[] =>
   roots.flatMap((root) => [root, ...(root.children ?? [])])
