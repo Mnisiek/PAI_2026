@@ -37,6 +37,10 @@ build/
 node_modules
 /dist
 
+# Nuxt build output
+.nuxt
+.output
+
 
 # local env files
 .env.local
