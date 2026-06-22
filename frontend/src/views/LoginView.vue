@@ -1,12 +1,11 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
-import { useRouter } from 'vue-router'
+
 import MainLayout from '../layouts/MainLayout.vue'
 import BaseInput from '../components/base/BaseInput.vue'
 import { useAuthStore } from '../stores/auth.store'
 
 const authStore = useAuthStore()
-const router = useRouter()
 
 const email = ref('jan@example.com')
 const password = ref('demo1234')
@@ -25,7 +24,7 @@ const submit = async (): Promise<void> => {
   const loggedIn = await authStore.login(email.value, password.value)
 
   if (loggedIn) {
-    await router.push('/')
+    await navigateTo('/')
   }
 }
 </script>
