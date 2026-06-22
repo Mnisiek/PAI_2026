@@ -7,11 +7,14 @@ import ActivityTrendChart from '../components/admin/ActivityTrendChart.vue'
 import AdminNav from '../components/admin/AdminNav.vue'
 import { analyticsService } from '../services/analytics.service'
 import { categories } from '../mocks/catalogData'
-import type { ActivityStats } from '../types/activity'
 
-const stats = ref<ActivityStats | null>(null)
-const isLoading = ref(true)
-const error = ref<string | null>(null)
+const RANGE_OPTIONS = [
+  { label: '7 dni', days: 7 },
+  { label: '30 dni', days: 30 },
+  { label: '90 dni', days: 90 },
+] as const
+
+const rangeDays = ref(30)
 
 const categoryNameById = new Map(categories.map((category) => [category.id, category.name]))
 
@@ -42,21 +45,23 @@ const topCategoriesMax = computed(() =>
 
 const pct = (value: number, max: number): string => `${Math.round((value / max) * 100)}%`
 
-const loadStats = async (): Promise<void> => {
-  isLoading.value = true
-  error.value = null
+const dayInMs = 24 * 60 * 60 * 1000
+const computeFrom = (days: number): string => new Date(Date.now() - days * dayInMs).toISOString()
 
-  try {
-    stats.value = await analyticsService.getActivityStats()
-  } catch (caught) {
-    error.value =
-      caught instanceof Error ? caught.message : 'Nie udało się pobrać statystyk aktywności.'
-  } finally {
-    isLoading.value = false
-  }
-}
+// Runs on the server for the initial render and again on the client whenever the
+// selected range changes — giving SSR data plus interactive client-side refetch.
+const { data: stats, pending, error, refresh } = await useAsyncData(
+  'admin-activity-stats',
+  () => analyticsService.getActivityStats({ from: computeFrom(rangeDays.value) }),
+  { watch: [rangeDays] },
+)
 
-await useAsyncData('admin-activity-stats', loadStats)
+const errorMessage = computed(() =>
+  error.value ? 'Nie udało się pobrać statystyk aktywności. Spróbuj ponownie.' : null,
+)
+
+// Keep the current dashboard visible while a range switch is loading.
+const isUpdating = computed(() => pending.value && Boolean(stats.value))
 </script>
 
 <template>
@@ -67,16 +72,35 @@ await useAsyncData('admin-activity-stats', loadStats)
           <p class="admin__eyebrow">Panel administracyjny</p>
           <h1 class="admin__title">Statystyki aktywności</h1>
         </div>
-        <p class="admin__hint">Ostatnie 30 dni</p>
       </header>
 
       <AdminNav />
 
-      <SkeletonLoader v-if="isLoading" />
+      <div class="range" role="group" aria-label="Zakres czasu">
+        <button
+          v-for="option in RANGE_OPTIONS"
+          :key="option.days"
+          type="button"
+          class="range__btn"
+          :class="{ 'range__btn--active': rangeDays === option.days }"
+          :aria-pressed="rangeDays === option.days"
+          @click="rangeDays = option.days"
+        >
+          {{ option.label }}
+        </button>
+      </div>
 
-      <p v-else-if="error" class="admin__error" role="alert">{{ error }}</p>
+      <SkeletonLoader v-if="pending && !stats" />
 
-      <template v-else-if="stats">
+      <div v-else-if="errorMessage" class="admin__error" role="alert">
+        <span>{{ errorMessage }}</span>
+        <button type="button" class="admin__retry" @click="() => refresh()">
+          Spróbuj ponownie
+        </button>
+      </div>
+
+      <Transition v-else-if="stats" name="stats" mode="out-in">
+        <div :key="rangeDays" class="admin__content" :class="{ 'is-updating': isUpdating }">
         <section class="admin__summary">
           <BaseCard class="stat">
             <p class="stat__label">Zdarzenia</p>
@@ -94,7 +118,7 @@ await useAsyncData('admin-activity-stats', loadStats)
 
         <BaseCard class="admin__panel">
           <h2 class="admin__panel-title">Aktywność w czasie</h2>
-          <ActivityTrendChart :points="stats.eventsPerDay" />
+          <ActivityTrendChart :data="stats.eventsPerDayByType" :labels="EVENT_TYPE_LABELS" />
         </BaseCard>
 
         <section class="admin__columns">
@@ -140,7 +164,8 @@ await useAsyncData('admin-activity-stats', loadStats)
             </ul>
           </BaseCard>
         </section>
-      </template>
+        </div>
+      </Transition>
     </div>
   </MainLayout>
 </template>
@@ -194,21 +219,104 @@ await useAsyncData('admin-activity-stats', loadStats)
   background: rgba(20, 184, 166, 0.1);
 }
 
-.admin__hint {
-  margin: 0;
-  font-size: 0.82rem;
-  color: var(--color-text-secondary);
-  background: rgba(20, 184, 166, 0.12);
-  border-radius: 999px;
-  padding: 0.3rem 0.75rem;
-}
-
 .admin__error {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
   border: 1px solid rgba(220, 38, 38, 0.25);
   border-radius: 14px;
   background: rgba(254, 242, 242, 0.88);
   color: #991b1b;
   padding: 0.9rem 1rem;
+}
+
+.admin__retry {
+  flex: none;
+  cursor: pointer;
+  font-size: 0.84rem;
+  font-weight: 600;
+  color: #991b1b;
+  background: transparent;
+  border: 1px solid rgba(220, 38, 38, 0.4);
+  border-radius: 999px;
+  padding: 0.35rem 0.85rem;
+}
+
+.admin__retry:hover {
+  background: rgba(220, 38, 38, 0.1);
+}
+
+.admin__content {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  transition: opacity 0.2s ease;
+}
+
+.admin__content.is-updating {
+  opacity: 0.6;
+  pointer-events: none;
+}
+
+/* Crossfade the whole dashboard when the time range changes. */
+.stats-enter-active,
+.stats-leave-active {
+  transition: opacity 0.25s ease, transform 0.25s ease;
+}
+
+.stats-enter-from {
+  opacity: 0;
+  transform: translateY(10px);
+}
+
+.stats-leave-to {
+  opacity: 0;
+  transform: translateY(-10px);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .admin__content,
+  .stats-enter-active,
+  .stats-leave-active {
+    transition: none;
+  }
+
+  .stats-enter-from,
+  .stats-leave-to {
+    transform: none;
+  }
+}
+
+.range {
+  display: inline-flex;
+  align-self: flex-start;
+  gap: 0.25rem;
+  padding: 0.25rem;
+  border: 1px solid var(--color-border-soft);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.72);
+}
+
+.range__btn {
+  cursor: pointer;
+  font-size: 0.82rem;
+  color: var(--color-text-secondary);
+  background: transparent;
+  border: none;
+  border-radius: 999px;
+  padding: 0.32rem 0.8rem;
+  transition: background-color 0.16s ease, color 0.16s ease;
+}
+
+.range__btn:hover {
+  color: var(--color-brand-strong);
+}
+
+.range__btn--active {
+  background: var(--color-brand-strong);
+  color: #fff;
 }
 
 .admin__summary {

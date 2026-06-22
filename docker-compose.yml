@@ -1,45 +1,65 @@
+# Full containerised application.
+#
+# Dependency chain:  frontend  ->  backend  ->  { clickhouse, postgres, valkey }
+#
+#   docker compose up --build
+#
+# The data stores are defined once in docker/infra/docker-compose.yml and pulled in
+# via `include`, so there is a single source of truth for the infra services.
+# For local development (apps on host, infra in Docker) use that file directly:
+#   docker compose -f docker/infra/docker-compose.yml up -d
+include:
+  - docker/infra/docker-compose.yml
+
 services:
-  postgres:
-    image: postgres:15-alpine
-    container_name: pai-postgres
+  backend:
+    build:
+      context: ./backend
+    container_name: pai-backend
     environment:
-      POSTGRES_USER: user
-      POSTGRES_PASSWORD: password
-      POSTGRES_DB: shop_db
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/shop_db
+      SPRING_DATASOURCE_USERNAME: user
+      SPRING_DATASOURCE_PASSWORD: password
+      CLICKHOUSE_URL: jdbc:clickhouse://clickhouse:8123/activity_db
+      CLICKHOUSE_USERNAME: user
+      CLICKHOUSE_PASSWORD: password
+      SPRING_DATA_REDIS_HOST: valkey
+      SPRING_DATA_REDIS_PORT: "6379"
     ports:
-      - "5432:5432"
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
+      - "8080:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      clickhouse:
+        condition: service_healthy
+      valkey:
+        condition: service_healthy
+    healthcheck:
+      # No actuator on the classpath — just confirm the HTTP port is accepting.
+      test: ["CMD", "bash", "-c", "exec 3<>/dev/tcp/localhost/8080"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 60s
 
-  clickhouse:
-    image: clickhouse/clickhouse-server:latest
-    container_name: pai-clickhouse
+  frontend:
+    build:
+      context: ./frontend
+      args:
+        # Baked into the Nitro build: where the in-container /graphql proxy points.
+        NUXT_GRAPHQL_PROXY_TARGET: http://backend:8080/graphql
+    container_name: pai-frontend
     environment:
-      - CLICKHOUSE_USER=user
-      - CLICKHOUSE_PASSWORD=password
+      # SSR fetches stats straight from the backend over the compose network.
+      NUXT_ACTIVITY_API_INTERNAL: http://backend:8080/graphql
     ports:
-      - "8123:8123"
-      - "9000:9000"
-    volumes:
-      - clickhouse_data:/var/lib/clickhouse
-      # Schema bootstrap — runs only on first init (empty data dir).
-      - ./clickhouse/init:/docker-entrypoint-initdb.d
-    ulimits:
-      nofile:
-        soft: 262144
-        hard: 262144
-
-  # Valkey (OSS Redis fork) — 9.0+ for per-hash-field TTL (HEXPIRE).
-  valkey:
-    image: valkey/valkey:9.0-alpine
-    container_name: pai-valkey
-    command: ["valkey-server", "--appendonly", "yes"]
-    ports:
-      - "6379:6379"
-    volumes:
-      - valkey_data:/data
-
-volumes:
-  postgres_data:
-  clickhouse_data:
-  valkey_data:
+      - "3000:3000"
+    depends_on:
+      backend:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:3000/ >/dev/null 2>&1 || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s

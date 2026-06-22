@@ -6,7 +6,11 @@ const clients = new Map<string, ApolloClient<NormalizedCacheObject>>()
 
 export const getActivityClient = (): ApolloClient<NormalizedCacheObject> => {
   const config = useRuntimeConfig()
-  const uri = config.public.activityApi || '/graphql'
+  // SSR runs in Node where a relative `/graphql` can't be fetched, so use the
+  // absolute internal URL on the server and the proxied path in the browser.
+  const uri = import.meta.server
+    ? config.activityApiInternal || 'http://localhost:8080/graphql'
+    : config.public.activityApi || '/graphql'
   const cached = clients.get(uri)
 
   if (cached) {

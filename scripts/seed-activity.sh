@@ -20,50 +20,36 @@ vk() { docker exec -i "$VK_CONTAINER" valkey-cli "$@" >/dev/null; }
 NOW_MS=$(( $(date +%s) * 1000 ))
 DAY_MS=86400000
 
-echo "==> ClickHouse: schema, reset & seed (db=${CH_DB})"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+echo "==> ClickHouse: schema (from clickhouse/init), reset & seed (db=${CH_DB})"
+
+# Schema lives in clickhouse/init/*.sql — the single source of truth, also applied
+# by ClickHouse's first-boot bootstrap. Re-apply it here (the files are idempotent)
+# so seeding also works against a volume that predates those files.
+cat "${SCRIPT_DIR}"/../clickhouse/init/*.sql | ch
+
 ch <<SQL
-CREATE DATABASE IF NOT EXISTS ${CH_DB};
-
-CREATE TABLE IF NOT EXISTS ${CH_DB}.activity_event (
-    ts            DateTime64(3),
-    event_type    LowCardinality(String),
-    user_id       Nullable(String),
-    session_id    String,
-    product_id    Nullable(Int64),
-    product_name  Nullable(String),
-    product_slug  Nullable(String),
-    category_id   Nullable(Int64),
-    brand_id      Nullable(Int64),
-    brand_name    Nullable(String),
-    offer_id      Nullable(Int64),
-    sku           Nullable(String),
-    price         Nullable(Decimal(12, 2)),
-    currency      LowCardinality(Nullable(String)),
-    search_query  Nullable(String),
-    quantity      Nullable(Int32),
-    url           Nullable(String),
-    referrer      Nullable(String),
-    user_agent    Nullable(String)
-) ENGINE = MergeTree ORDER BY (event_type, ts) PARTITION BY toYYYYMM(ts);
-
 TRUNCATE TABLE ${CH_DB}.activity_event;
 
+-- Demo fixture for three actors:
+--   user-1042    — browses, carts and buys an iPhone today; views a Galaxy yesterday
+--   user-2087    — phones + audio, runs a search, buys AirPods
+--   sess-guest-9 — anonymous, just browsing the iPhone
+-- (ClickHouse's Values parser rejects comments between rows, so they live here.)
 INSERT INTO ${CH_DB}.activity_event
     (ts, event_type, user_id, session_id, product_id, product_name, product_slug,
      category_id, brand_id, brand_name, offer_id, sku, price, currency,
      search_query, quantity, url, referrer, user_agent) VALUES
--- user-1042: browses, carts and buys an iPhone (today)
 (now() - INTERVAL 10 MINUTE, 'PRODUCT_DETAIL',        'user-1042', 'sess-a1', 1, 'iPhone 15', 'iphone-15', 7, 3, 'Apple',   12, 'IP15-128-BLK', 3999.00, 'PLN', NULL, NULL, '/p/iphone-15',     '/c/phones',     'Mozilla/5.0'),
 (now() - INTERVAL 8  MINUTE, 'CLICK',       'user-1042', 'sess-a1', 1, 'iPhone 15', 'iphone-15', 7, 3, 'Apple',   12, 'IP15-128-BLK', 3999.00, 'PLN', NULL, NULL, '/p/iphone-15',     '/p/iphone-15',  'Mozilla/5.0'),
 (now() - INTERVAL 7  MINUTE, 'ADD_TO_CART', 'user-1042', 'sess-a1', 1, 'iPhone 15', 'iphone-15', 7, 3, 'Apple',   12, 'IP15-128-BLK', 3999.00, 'PLN', NULL, 1,    '/p/iphone-15',     '/p/iphone-15',  'Mozilla/5.0'),
 (now() - INTERVAL 5  MINUTE, 'PURCHASE',    'user-1042', 'sess-a1', 1, 'iPhone 15', 'iphone-15', 7, 3, 'Apple',   12, 'IP15-128-BLK', 3999.00, 'PLN', NULL, 1,    '/checkout/success','/cart',         'Mozilla/5.0'),
 (now() - INTERVAL 1  DAY,    'PRODUCT_DETAIL',        'user-1042', 'sess-a1', 5, 'Galaxy S24','galaxy-s24',7, 4, 'Samsung', 31, 'SGS24-256',    3499.00, 'PLN', NULL, NULL, '/p/galaxy-s24',    '/c/phones',     'Mozilla/5.0'),
--- user-2087: phones + audio, plus a search
 (now() - INTERVAL 2  HOUR,   'PRODUCT_DETAIL',        'user-2087', 'sess-b2', 5, 'Galaxy S24','galaxy-s24',7, 4, 'Samsung', 31, 'SGS24-256',    3499.00, 'PLN', NULL, NULL, '/p/galaxy-s24',    '/c/phones',     'Mozilla/5.0'),
 (now() - INTERVAL 1  DAY,    'SEARCH',      'user-2087', 'sess-b2', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'wireless earbuds', NULL, '/search?q=wireless+earbuds', NULL, 'Mozilla/5.0'),
 (now() - INTERVAL 3  DAY,    'PRODUCT_DETAIL',        'user-2087', 'sess-b2', 8, 'AirPods Pro','airpods-pro',8, 3, 'Apple',  40, 'APP-2',        1099.00, 'PLN', NULL, NULL, '/p/airpods-pro',   '/search',       'Mozilla/5.0'),
 (now() - INTERVAL 5  DAY,    'PURCHASE',    'user-2087', 'sess-b2', 8, 'AirPods Pro','airpods-pro',8, 3, 'Apple',  40, 'APP-2',        1099.00, 'PLN', NULL, 2,    '/checkout/success','/cart',         'Mozilla/5.0'),
--- guest session: just browsing the iPhone
 (now() - INTERVAL 2  DAY,    'PRODUCT_DETAIL',        NULL,        'sess-guest-9', 1, 'iPhone 15','iphone-15',7, 3, 'Apple', 12, 'IP15-128-BLK', 3999.00, 'PLN', NULL, NULL, '/p/iphone-15',    '/',             'Mozilla/5.0'),
 (now() - INTERVAL 2  DAY,    'CLICK',       NULL,        'sess-guest-9', 1, 'iPhone 15','iphone-15',7, 3, 'Apple', 12, 'IP15-128-BLK', 3999.00, 'PLN', NULL, NULL, '/p/iphone-15',    '/p/iphone-15',  'Mozilla/5.0');
 SQL

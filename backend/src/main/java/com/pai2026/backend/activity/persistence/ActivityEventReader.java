@@ -3,6 +3,7 @@ package com.pai2026.backend.activity.persistence;
 import com.pai2026.backend.activity.api.dto.ActivitySummary;
 import com.pai2026.backend.activity.api.dto.CategoryActivity;
 import com.pai2026.backend.activity.api.dto.DailyCount;
+import com.pai2026.backend.activity.api.dto.DailyTypeCount;
 import com.pai2026.backend.activity.api.dto.EventTypeCount;
 import com.pai2026.backend.activity.api.dto.ProductActivity;
 import java.sql.Timestamp;
@@ -59,6 +60,14 @@ public class ActivityEventReader {
             ORDER BY day
             """;
 
+    private static final String EVENTS_PER_DAY_BY_TYPE_SQL = """
+            SELECT toString(toDate(ts)) AS day, event_type AS type, count() AS count
+            FROM activity_event
+            WHERE ts >= :from AND ts < :to
+            GROUP BY day, event_type
+            ORDER BY day, event_type
+            """;
+
     private final NamedParameterJdbcTemplate clickHouseJdbc;
 
     public ActivityEventReader(@Qualifier("clickHouseJdbc") NamedParameterJdbcTemplate clickHouseJdbc) {
@@ -91,6 +100,11 @@ public class ActivityEventReader {
     public List<DailyCount> eventsPerDay(Instant from, Instant to) {
         return clickHouseJdbc.query(EVENTS_PER_DAY_SQL, window(from, to), (rs, n) ->
                 new DailyCount(rs.getString("day"), rs.getLong("count")));
+    }
+
+    public List<DailyTypeCount> eventsPerDayByType(Instant from, Instant to) {
+        return clickHouseJdbc.query(EVENTS_PER_DAY_BY_TYPE_SQL, window(from, to), (rs, n) ->
+                new DailyTypeCount(rs.getString("day"), rs.getString("type"), rs.getLong("count")));
     }
 
     private static MapSqlParameterSource window(Instant from, Instant to) {

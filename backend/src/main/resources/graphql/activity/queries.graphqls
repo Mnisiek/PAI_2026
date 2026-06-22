@@ -36,6 +36,9 @@ type ActivityModuleQuery {
 
     "Daily event counts, oldest first — for a time-series chart."
     eventsPerDay(from: String, to: String): [DailyCount!]!
+
+    "Daily event counts split by event type, oldest first — for a multi-series chart."
+    eventsPerDayByType(from: String, to: String): [DailyTypeCount!]!
 }
 
 type ActivitySummary {
@@ -65,5 +68,13 @@ type CategoryActivity {
 type DailyCount {
     "Day as ISO date (YYYY-MM-DD), UTC."
     day: String!
+    count: Int!
+}
+
+type DailyTypeCount {
+    "Day as ISO date (YYYY-MM-DD), UTC."
+    day: String!
+    "One of the ActivityEventType values."
+    type: String!
     count: Int!
 }

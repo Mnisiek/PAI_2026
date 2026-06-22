@@ -6,11 +6,18 @@ interface ActivityStatsResponse {
   activityModule: ActivityStats
 }
 
+/** ISO-8601 instants; both optional (backend falls back to its default window). */
+export interface ActivityStatsRange {
+  from?: string | null
+  to?: string | null
+}
+
 export const analyticsService = {
   // Reads dashboard aggregates from the real backend (ClickHouse-backed).
-  async getActivityStats(): Promise<ActivityStats> {
+  async getActivityStats(range?: ActivityStatsRange): Promise<ActivityStats> {
     const { data } = await getActivityClient().query<ActivityStatsResponse>({
       query: ACTIVITY_STATS,
+      variables: { from: range?.from ?? null, to: range?.to ?? null },
       fetchPolicy: 'no-cache',
     })
 
