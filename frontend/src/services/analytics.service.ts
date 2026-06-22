@@ -1,4 +1,4 @@
-import { getActivityClient } from './activityClient'
+import { getActivityClient } from '../apollo clients/activityClient'
 import { ACTIVITY_STATS } from '../graphql/activity.queries'
 import type { ActivityStats } from '../types/activity'
 

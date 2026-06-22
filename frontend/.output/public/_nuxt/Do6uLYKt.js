@@ -1,1 +1,0 @@
-import{_ as a,o as s,c,a7 as o}from"./DnUmWf34.js";const r={},t={class:"base-card"};function n(e,_){return s(),c("article",t,[o(e.$slots,"default",{},void 0)])}const f=a(r,[["render",n],["__scopeId","data-v-efc305a9"]]);export{f as B};

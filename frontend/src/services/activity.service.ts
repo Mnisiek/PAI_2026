@@ -1,4 +1,4 @@
-import { getActivityClient } from './activityClient'
+import { getActivityClient } from '../apollo clients/activityClient'
 import { RECORD_ACTIVITY_EVENT } from '../graphql/activity.queries'
 import type { ActivityEventInput, ActivityEventType } from '../types/activity'
 import type { Offer, Product } from '../types/catalog'

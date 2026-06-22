@@ -69,8 +69,7 @@ type Product {
 }
 
 input ProductFilter {
-  search: String
-  categoryId: ID
+  categorySlug: String
 }
 
 type ProductPage {
@@ -83,7 +82,7 @@ type ProductPage {
 
 type OffersModuleQuery {
   product(slug: ID!): Product
-  products(filter: ProductFilter): ProductPage!
+  products(search: String, filter: ProductFilter): ProductPage!
   category(slug: ID!): Category
   rootCategories: [Category!]!
 }

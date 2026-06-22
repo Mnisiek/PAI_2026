@@ -1,4 +1,4 @@
-import { apolloClient } from './apolloClient'
+import { apolloClient } from '../apollo clients/apolloClient'
 import { LOGIN_MUTATION } from '../graphql/auth.queries'
 import type { AuthPayload, LoginInput } from '../types/auth'
 

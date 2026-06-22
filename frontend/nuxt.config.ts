@@ -4,6 +4,9 @@ export default defineNuxtConfig({
   srcDir: 'src/',
   modules: ['@pinia/nuxt'],
   css: ['~/style.css'],
+  experimental: {
+    appManifest: false,
+  },
   vite: {
     plugins: [tailwindcss()],
   },

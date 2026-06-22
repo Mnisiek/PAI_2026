@@ -1,4 +1,4 @@
-import { getApolloClient } from '../apollo clients/apolloClient'
+import { apolloClient } from '../apollo clients/apolloClient'
 import { GET_CATEGORIES, GET_PRODUCT, GET_PRODUCTS } from '../graphql/catalog.queries'
 import type { CatalogFilterInput, Category, Product } from '../types/catalog'
 
