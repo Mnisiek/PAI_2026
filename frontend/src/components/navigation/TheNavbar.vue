@@ -34,6 +34,8 @@ const openCart = (): void => {
     </div>
 
     <div class="top-nav__actions">
+      <NuxtLink class="top-nav__account-link" to="/offers">Oferty</NuxtLink>
+
       <NuxtLink class="top-nav__account-link" to="/admin">Panel</NuxtLink>
 
       <NuxtLink class="top-nav__account-link" :to="authStore.isAuthenticated ? '/' : '/login'">

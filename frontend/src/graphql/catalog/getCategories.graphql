@@ -12,6 +12,34 @@ query GetCategories {
         slug
         parentId
         isLeaf
+        children {
+          id
+          name
+          slug
+          parentId
+          isLeaf
+          children {
+            id
+            name
+            slug
+            parentId
+            isLeaf
+            children {
+              id
+              name
+              slug
+              parentId
+              isLeaf
+              children {
+                id
+                name
+                slug
+                parentId
+                isLeaf
+              }
+            }
+          }
+        }
       }
     }
   }

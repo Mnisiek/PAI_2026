@@ -5,6 +5,7 @@ import com.pai2026.backend.offers.domain.*;
 import com.pai2026.backend.offers.service.OffersService;
 import org.springframework.graphql.data.method.annotation.Argument;
 import org.springframework.graphql.data.method.annotation.BatchMapping;
+import org.springframework.graphql.data.method.annotation.MutationMapping;
 import org.springframework.graphql.data.method.annotation.QueryMapping;
 import org.springframework.graphql.data.method.annotation.SchemaMapping;
 import org.springframework.stereotype.Controller;
@@ -28,6 +29,21 @@ public class OffersController {
     @QueryMapping
     public OffersModuleQuery offersModule() {
         return new OffersModuleQuery();
+    }
+
+    @MutationMapping
+    public Category addCategory(@Argument AddCategoryInput input) {
+        return offersService.addCategory(input);
+    }
+
+    @MutationMapping
+    public Product addProduct(@Argument AddProductInput input) {
+        return offersService.addProduct(input);
+    }
+
+    @MutationMapping
+    public Offer addOffer(@Argument AddOfferInput input) {
+        return offersService.addOffer(input);
     }
 
     @SchemaMapping(typeName = "OffersModuleQuery")

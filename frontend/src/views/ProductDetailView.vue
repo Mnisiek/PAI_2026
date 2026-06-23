@@ -12,9 +12,11 @@ import type { AttributeValue, Offer, Product } from '../types/catalog'
 
 const cartStore = useCartStore()
 const { formatPrice } = useCurrency()
+const route = useRoute()
 
 const product = ref<Product | null>(null)
 const selectedOffer = ref<Offer | null>(null)
+const selectedAttributeValues = ref<Record<string, string>>({})
 const isLoading = ref(true)
 const error = ref<string | null>(null)
 
@@ -32,8 +34,100 @@ const attributeText = (attribute: AttributeValue): string => {
 }
 
 const offerLabel = (offer: Offer): string => {
-  const parts = offer.attributes?.map(attributeText).filter(Boolean) ?? []
+  const parts = [...(offer.attributes ?? [])]
+    .sort((a, b) => a.name.localeCompare(b.name, 'pl-PL'))
+    .map(attributeText)
+    .filter(Boolean)
   return parts.length ? parts.join(' / ') : offer.sku
+}
+
+type VariantAxis = {
+  code: string
+  name: string
+  values: string[]
+}
+
+const variantAxes = computed<VariantAxis[]>(() => {
+  const offers = product.value?.offers ?? []
+  const axesByCode = new Map<string, { name: string; values: Set<string> }>()
+
+  for (const offer of offers) {
+    for (const attribute of offer.attributes ?? []) {
+      const value = attributeText(attribute)
+      if (!value) {
+        continue
+      }
+
+      const axis = axesByCode.get(attribute.code)
+      if (axis) {
+        axis.values.add(value)
+      } else {
+        axesByCode.set(attribute.code, {
+          name: attribute.name,
+          values: new Set([value]),
+        })
+      }
+    }
+  }
+
+  return [...axesByCode.entries()]
+    .map(([code, axis]) => ({
+      code,
+      name: axis.name,
+      values: [...axis.values].sort((a, b) => a.localeCompare(b, 'pl-PL')),
+    }))
+    .sort((a, b) => a.name.localeCompare(b.name, 'pl-PL'))
+})
+
+const hasVariantAxes = computed(() => variantAxes.value.length > 0)
+
+const applyOfferAttributesSelection = (offer: Offer | null): void => {
+  if (!offer) {
+    selectedAttributeValues.value = {}
+    return
+  }
+
+  const nextSelection: Record<string, string> = {}
+  for (const attribute of offer.attributes ?? []) {
+    const value = attributeText(attribute)
+    if (value) {
+      nextSelection[attribute.code] = value
+    }
+  }
+
+  selectedAttributeValues.value = nextSelection
+}
+
+const selectByAttributes = (axisCode: string, value: string): void => {
+  const currentSelection = {
+    ...selectedAttributeValues.value,
+    [axisCode]: value,
+  }
+
+  selectedAttributeValues.value = currentSelection
+
+  const offers = product.value?.offers ?? []
+  const strictMatch = offers.find((offer) => {
+    return variantAxes.value.every((axis) => {
+      const wanted = currentSelection[axis.code]
+      if (!wanted) {
+        return true
+      }
+
+      const actual = offer.attributes?.find((attr) => attr.code === axis.code)
+      return actual ? attributeText(actual) === wanted : false
+    })
+  })
+
+  if (strictMatch) {
+    selectedOffer.value = strictMatch
+    applyOfferAttributesSelection(strictMatch)
+    return
+  }
+
+  const fallback = offers.find((offer) => offer.stock > 0) ?? offers[0] ?? null
+  selectedOffer.value = fallback
+  applyOfferAttributesSelection(fallback)
 }
 
 const hasVariants = computed(() => (product.value?.offers?.length ?? 0) > 1)
@@ -47,7 +141,6 @@ const loadProduct = async (): Promise<void> => {
   error.value = null
 
   try {
-    const route = useRoute()
     const slug = String(route.params.slug)
     const found = await catalogService.getProductBySlug(slug)
 
@@ -58,6 +151,7 @@ const loadProduct = async (): Promise<void> => {
 
     product.value = found
     selectedOffer.value = found.offers?.[0] ?? null
+    applyOfferAttributesSelection(selectedOffer.value)
     // Product detail view — the key retargeting signal.
     activityService.trackProductDetail(found)
   } catch (caught) {
@@ -69,6 +163,7 @@ const loadProduct = async (): Promise<void> => {
 
 const selectOffer = (offer: Offer): void => {
   selectedOffer.value = offer
+  applyOfferAttributesSelection(offer)
 }
 
 const addToCart = (): void => {
@@ -80,7 +175,7 @@ const addToCart = (): void => {
   cartStore.openCart()
 }
 
-await useAsyncData('product-detail', loadProduct, {
+useAsyncData('product-detail', loadProduct, {
   watch: [() => route.params.slug],
 })
 </script>
@@ -88,7 +183,7 @@ await useAsyncData('product-detail', loadProduct, {
 <template>
   <MainLayout>
     <div class="pdp">
-      <NuxtLink class="pdp__back" to="/">← Wróć do ofert</NuxtLink>
+      <NuxtLink class="pdp__back" to="/offers">← Wróć do ofert</NuxtLink>
 
       <SkeletonLoader v-if="isLoading" />
 
@@ -111,7 +206,32 @@ await useAsyncData('product-detail', loadProduct, {
 
             <div v-if="product.offers.length" class="pdp__variants">
               <p class="pdp__section-label">{{ hasVariants ? 'Wybierz wariant' : 'Wariant' }}</p>
-              <div class="pdp__variant-list" role="radiogroup" aria-label="Warianty">
+              <div
+                v-if="hasVariantAxes"
+                class="pdp__axis-list"
+                role="group"
+                aria-label="Wybór cech wariantu"
+              >
+                <div v-for="axis in variantAxes" :key="axis.code" class="pdp__axis-row">
+                  <p class="pdp__axis-label">{{ axis.name }}</p>
+                  <div class="pdp__axis-values">
+                    <button
+                      v-for="value in axis.values"
+                      :key="`${axis.code}:${value}`"
+                      type="button"
+                      class="pdp__axis-value"
+                      :class="{
+                        'pdp__axis-value--active': selectedAttributeValues[axis.code] === value,
+                      }"
+                      @click="selectByAttributes(axis.code, value)"
+                    >
+                      {{ value }}
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              <div v-else class="pdp__variant-list" role="radiogroup" aria-label="Warianty">
                 <button
                   v-for="offer in product.offers"
                   :key="offer.id"
@@ -133,6 +253,8 @@ await useAsyncData('product-detail', loadProduct, {
                   </span>
                 </button>
               </div>
+
+              <p v-if="selectedOffer" class="pdp__selected-sku">SKU: {{ selectedOffer.sku }}</p>
             </div>
 
             <button
@@ -277,6 +399,58 @@ await useAsyncData('product-detail', loadProduct, {
   gap: 0.5rem;
 }
 
+.pdp__axis-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+}
+
+.pdp__axis-row {
+  display: grid;
+  grid-template-columns: minmax(90px, auto) 1fr;
+  gap: 0.55rem;
+  align-items: center;
+}
+
+.pdp__axis-label {
+  margin: 0;
+  font-size: 0.84rem;
+  color: var(--color-text-secondary);
+}
+
+.pdp__axis-values {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.pdp__axis-value {
+  border: 1px solid var(--color-border-soft);
+  border-radius: 999px;
+  background: #fff;
+  color: var(--color-text-primary);
+  font: inherit;
+  font-size: 0.82rem;
+  padding: 0.28rem 0.68rem;
+  cursor: pointer;
+}
+
+.pdp__axis-value:hover {
+  border-color: rgba(15, 118, 110, 0.42);
+}
+
+.pdp__axis-value--active {
+  border-color: var(--color-brand-strong);
+  background: rgba(20, 184, 166, 0.1);
+  color: var(--color-brand-strong);
+}
+
+.pdp__selected-sku {
+  margin: 0;
+  font-size: 0.76rem;
+  color: var(--color-text-muted);
+}
+
 .pdp__variant {
   display: flex;
   flex-direction: column;
@@ -372,6 +546,13 @@ await useAsyncData('product-detail', loadProduct, {
   .pdp__image {
     height: 100%;
     max-height: 460px;
+  }
+}
+
+@media (max-width: 620px) {
+  .pdp__axis-row {
+    grid-template-columns: 1fr;
+    gap: 0.3rem;
   }
 }
 </style>

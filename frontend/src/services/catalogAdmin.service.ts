@@ -1,4 +1,6 @@
-import { categories, products } from '../mocks/catalogData'
+import { getApolloClient } from '../apollo clients/apolloClient'
+import { GET_CATEGORIES, GET_PRODUCTS } from '../graphql/catalog.queries'
+import { ADD_CATEGORY_MUTATION, ADD_OFFER_MUTATION, ADD_PRODUCT_MUTATION } from '../graphql/catalog.mutations'
 import type { AttributeValue, Category, Money, Offer, Product } from '../types/catalog'
 
 export interface NewProductInput {
@@ -17,8 +19,14 @@ export interface NewOfferInput {
   sku: string
   price: number
   stock: number
+  attributes?: NewOfferAttributeInput[]
   attributeName?: string
   attributeValue?: string
+}
+
+export interface NewOfferAttributeInput {
+  name: string
+  value: string
 }
 
 export interface NewCategoryInput {
@@ -26,129 +34,120 @@ export interface NewCategoryInput {
   parentId?: string | null
 }
 
-// Continue id sequences from whatever the mock seeded, so new ids stay numeric.
-let nextProductId = Math.max(0, ...products.map((product) => Number(product.id) || 0)) + 1
-let nextOfferId =
-  Math.max(0, ...products.flatMap((product) => product.offers.map((offer) => Number(offer.id) || 0))) +
-  1
-let nextCategoryId = Math.max(0, ...categories.map((category) => Number(category.id) || 0)) + 1
+interface CategoriesResponse {
+  offersModule: {
+    rootCategories: Category[]
+  }
+}
 
-const pln = (amount: number): Money => ({ amount, currency: 'PLN' })
+interface ProductsResponse {
+  offersModule: {
+    products: {
+      items: Product[]
+    }
+  }
+}
 
-const slugify = (value: string): string =>
-  value
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-+|-+$/g, '')
+interface AddCategoryResponse {
+  addCategory: Category
+}
 
-const DEFAULT_IMAGE =
-  'https://images.unsplash.com/photo-1523275335684-37898b6baf30?auto=format&fit=crop&w=900&q=80'
+interface AddProductResponse {
+  addProduct: Product
+}
 
-/**
- * Mock catalog admin — mutates the in-memory mock catalog so new products/offers
- * show up in the storefront. Session-scoped: a page reload resets the catalog.
- */
+interface AddOfferResponse {
+  addOffer: Offer
+}
+
+const flattenCategories = (roots: Category[]): Category[] => {
+  const flattened: Category[] = []
+
+  const visit = (node: Category): void => {
+    flattened.push(node)
+
+    for (const child of node.children ?? []) {
+      visit(child)
+    }
+  }
+
+  for (const root of roots) {
+    visit(root)
+  }
+
+  return flattened
+}
+
 export const catalogAdminService = {
-  listProducts(): Product[] {
-    return products
+  async listProducts(): Promise<Product[]> {
+    const client = getApolloClient()
+    const { data } = await client.query<ProductsResponse>({
+      query: GET_PRODUCTS,
+      variables: {
+        search: null,
+        filter: null,
+      },
+    })
+
+    if (!data) {
+      throw new Error('Products query returned no data.')
+    }
+
+    return data.offersModule.products.items
   },
 
-  addProduct(input: NewProductInput): Product {
-    const category = categories.find((candidate) => candidate.id === input.categoryId)
-    if (!category) {
-      throw new Error('Wybierz prawidłową kategorię.')
+  async addProduct(input: NewProductInput): Promise<Product> {
+    const client = getApolloClient()
+    const { data } = await client.mutate<AddProductResponse, { input: NewProductInput }>({
+      mutation: ADD_PRODUCT_MUTATION,
+      variables: { input },
+    })
+
+    if (!data) {
+      throw new Error('Add product mutation returned no data.')
     }
 
-    const id = String(nextProductId++)
-    const offer: Offer = {
-      id: String(nextOfferId++),
-      sku: input.sku,
-      price: pln(input.price),
-      stock: input.stock,
-      status: 'ACTIVE',
-      attributes: [],
-    }
-
-    const product: Product = {
-      id,
-      slug: `${slugify(input.name) || 'produkt'}-${id}`,
-      name: input.name,
-      description: input.description,
-      mainImageUrl: input.imageUrl || DEFAULT_IMAGE,
-      brand: input.brandName
-        ? { id, name: input.brandName, slug: slugify(input.brandName) || `brand-${id}` }
-        : null,
-      category,
-      priceFrom: pln(input.price),
-      offers: [offer],
-      specs: [],
-    }
-
-    products.unshift(product) // newest first
-    return product
+    return data.addProduct
   },
 
-  addOffer(input: NewOfferInput): Offer {
-    const product = products.find((candidate) => candidate.id === input.productId)
-    if (!product) {
-      throw new Error('Wybierz prawidłowy produkt.')
+  async addOffer(input: NewOfferInput): Promise<Offer> {
+    const client = getApolloClient()
+    const { data } = await client.mutate<AddOfferResponse, { input: NewOfferInput }>({
+      mutation: ADD_OFFER_MUTATION,
+      variables: { input },
+    })
+
+    if (!data) {
+      throw new Error('Add offer mutation returned no data.')
     }
 
-    const attributes: AttributeValue[] = []
-    if (input.attributeName && input.attributeValue) {
-      attributes.push({
-        code: slugify(input.attributeName) || 'attr',
-        name: input.attributeName,
-        dataType: 'TEXT',
-        unit: null,
-        textValue: input.attributeValue,
-        numValue: null,
-        boolValue: null,
-      })
-    }
-
-    const offer: Offer = {
-      id: String(nextOfferId++),
-      sku: input.sku,
-      price: pln(input.price),
-      stock: input.stock,
-      status: 'ACTIVE',
-      attributes,
-    }
-
-    product.offers.push(offer)
-    if (offer.price.amount < product.priceFrom.amount) {
-      product.priceFrom = pln(offer.price.amount)
-    }
-
-    return offer
+    return data.addOffer
   },
 
-  listCategories(): Category[] {
-    return categories
+  async listCategories(): Promise<Category[]> {
+    const client = getApolloClient()
+    const { data } = await client.query<CategoriesResponse>({
+      query: GET_CATEGORIES,
+    })
+
+    if (!data) {
+      throw new Error('Categories query returned no data.')
+    }
+
+    return flattenCategories(data.offersModule.rootCategories)
   },
 
-  addCategory(input: NewCategoryInput): Category {
-    const parentId = input.parentId || null
+  async addCategory(input: NewCategoryInput): Promise<Category> {
+    const client = getApolloClient()
+    const { data } = await client.mutate<AddCategoryResponse, { input: NewCategoryInput }>({
+      mutation: ADD_CATEGORY_MUTATION,
+      variables: { input },
+    })
 
-    if (parentId) {
-      const parent = categories.find((candidate) => candidate.id === parentId)
-      if (!parent) {
-        throw new Error('Wybierz prawidłową kategorię nadrzędną.')
-      }
-      parent.isLeaf = false // a category with children is no longer a leaf
+    if (!data) {
+      throw new Error('Add category mutation returned no data.')
     }
 
-    const id = String(nextCategoryId++)
-    const category: Category = {
-      id,
-      name: input.name,
-      slug: `${slugify(input.name) || 'kategoria'}-${id}`,
-      parentId,
-      isLeaf: true,
-    }
-
-    categories.push(category)
-    return category
+    return data.addCategory
   },
 }

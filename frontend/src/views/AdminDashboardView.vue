@@ -1,22 +1,18 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import MainLayout from '../layouts/MainLayout.vue'
 import BaseCard from '../components/base/BaseCard.vue'
 import SkeletonLoader from '../components/base/SkeletonLoader.vue'
 import ActivityTrendChart from '../components/admin/ActivityTrendChart.vue'
 import AdminNav from '../components/admin/AdminNav.vue'
 import { analyticsService } from '../services/analytics.service'
-import { categories } from '../mocks/catalogData'
+import { catalogService } from '../services/catalog.service'
+import type { ActivityStats } from '../types/activity'
 
-const RANGE_OPTIONS = [
-  { label: '7 dni', days: 7 },
-  { label: '30 dni', days: 30 },
-  { label: '90 dni', days: 90 },
-] as const
-
-const rangeDays = ref(30)
-
-const categoryNameById = new Map(categories.map((category) => [category.id, category.name]))
+const stats = ref<ActivityStats | null>(null)
+const categoryNameById = ref(new Map<string, string>())
+const isLoading = ref(true)
+const error = ref<string | null>(null)
 
 const EVENT_TYPE_LABELS: Record<string, string> = {
   VIEW: 'Wyświetlenia',
@@ -28,7 +24,7 @@ const EVENT_TYPE_LABELS: Record<string, string> = {
 }
 
 const eventTypeLabel = (type: string): string => EVENT_TYPE_LABELS[type] ?? type
-const categoryLabel = (id: string): string => categoryNameById.get(id) ?? `Kategoria ${id}`
+const categoryLabel = (id: string): string => categoryNameById.value.get(id) ?? `Kategoria ${id}`
 
 const numberFormat = new Intl.NumberFormat('pl-PL')
 const fmt = (value: number): string => numberFormat.format(value)
@@ -48,20 +44,25 @@ const pct = (value: number, max: number): string => `${Math.round((value / max) 
 const dayInMs = 24 * 60 * 60 * 1000
 const computeFrom = (days: number): string => new Date(Date.now() - days * dayInMs).toISOString()
 
-// Runs on the server for the initial render and again on the client whenever the
-// selected range changes — giving SSR data plus interactive client-side refetch.
-const { data: stats, pending, error, refresh } = await useAsyncData(
-  'admin-activity-stats',
-  () => analyticsService.getActivityStats({ from: computeFrom(rangeDays.value) }),
-  { watch: [rangeDays] },
-)
+  try {
+    const [activityStats, categories] = await Promise.all([
+      analyticsService.getActivityStats(),
+      catalogService.getCategories(),
+    ])
 
-const errorMessage = computed(() =>
-  error.value ? 'Nie udało się pobrać statystyk aktywności. Spróbuj ponownie.' : null,
-)
+    stats.value = activityStats
+    categoryNameById.value = new Map(categories.map((category) => [category.id, category.name]))
+  } catch (caught) {
+    error.value =
+      caught instanceof Error ? caught.message : 'Nie udało się pobrać statystyk aktywności.'
+  } finally {
+    isLoading.value = false
+  }
+}
 
-// Keep the current dashboard visible while a range switch is loading.
-const isUpdating = computed(() => pending.value && Boolean(stats.value))
+onMounted(() => {
+  void loadStats()
+})
 </script>
 
 <template>

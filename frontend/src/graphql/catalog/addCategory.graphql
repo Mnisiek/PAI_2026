@@ -1,0 +1,9 @@
+mutation AddCategory($input: AddCategoryInput!) {
+  addCategory(input: $input) {
+    id
+    name
+    slug
+    parentId
+    isLeaf
+  }
+}

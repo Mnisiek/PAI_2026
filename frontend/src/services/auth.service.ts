@@ -1,4 +1,4 @@
-import { apolloClient } from '../apollo clients/apolloClient'
+import { getApolloClient } from '../apollo clients/apolloClient'
 import { LOGIN_MUTATION } from '../graphql/auth.queries'
 import type { AuthPayload, LoginInput } from '../types/auth'
 
@@ -8,7 +8,9 @@ interface LoginResponse {
 
 export const authService = {
   async login(input: LoginInput): Promise<AuthPayload> {
-    const { data } = await apolloClient.mutate<LoginResponse, { input: LoginInput }>({
+    const client = getApolloClient()
+
+    const { data } = await client.mutate<LoginResponse, { input: LoginInput }>({
       mutation: LOGIN_MUTATION,
       variables: { input },
     })

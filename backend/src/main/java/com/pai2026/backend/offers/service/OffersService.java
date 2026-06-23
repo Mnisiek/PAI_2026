@@ -13,8 +13,10 @@ import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.text.Normalizer;
 import java.math.BigDecimal;
 import java.util.*;
+import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
 @Service
@@ -25,6 +27,7 @@ public class OffersService {
     private final CategoryRepository categoryRepository;
     private final BrandRepository brandRepository;
     private final OfferRepository offerRepository;
+    private final AttributeRepository attributeRepository;
 
     @PersistenceContext
     private EntityManager entityManager;
@@ -33,11 +36,110 @@ public class OffersService {
             ProductRepository productRepository,
             CategoryRepository categoryRepository,
             BrandRepository brandRepository,
-            OfferRepository offerRepository) {
+            OfferRepository offerRepository,
+            AttributeRepository attributeRepository) {
         this.productRepository = productRepository;
         this.categoryRepository = categoryRepository;
         this.brandRepository = brandRepository;
         this.offerRepository = offerRepository;
+        this.attributeRepository = attributeRepository;
+    }
+
+    @Transactional
+    public Category addCategory(AddCategoryInput input) {
+        String name = requireText(input.name(), "Category name is required.");
+
+        Category parent = null;
+        Long parentId = null;
+        if (input.parentId() != null && !input.parentId().isBlank()) {
+            parentId = parseId(input.parentId(), "Invalid parentId.");
+            parent = categoryRepository.findByIdAndIsActiveTrue(parentId)
+                    .orElseThrow(() -> new IllegalArgumentException("Parent category not found."));
+        }
+
+        Category category = new Category();
+        category.setName(name);
+        category.setParent(parent);
+        category.setActive(true);
+        category.setSortOrder(categoryRepository.findMaxSortOrderByParentId(parentId) + 1);
+        category.setSlug(uniqueSlug(name, categoryRepository::existsBySlug));
+
+        return categoryRepository.save(category);
+    }
+
+    @Transactional
+    public Product addProduct(AddProductInput input) {
+        String name = requireText(input.name(), "Product name is required.");
+        String sku = requireText(input.sku(), "SKU is required.");
+        BigDecimal price = requirePrice(input.price());
+        int stock = normalizeStock(input.stock());
+
+        Long categoryId = parseId(input.categoryId(), "Invalid categoryId.");
+        Category category = categoryRepository.findByIdAndIsActiveTrue(categoryId)
+                .orElseThrow(() -> new IllegalArgumentException("Category not found."));
+
+        if (offerRepository.existsBySku(sku)) {
+            throw new IllegalArgumentException("Offer SKU already exists.");
+        }
+
+        Product product = new Product();
+        product.setName(name);
+        product.setSlug(uniqueSlug(name, productRepository::existsBySlug));
+        product.setDescription(trimToNull(input.description()));
+        product.setCategory(category);
+        product.setBrand(resolveOrCreateBrand(input.brandName()));
+        product.setMainImageUrl(trimToNull(input.imageUrl()));
+        product.setStatus("ACTIVE");
+        product.setSpecs(new ArrayList<>());
+        product.setSearchText(buildSearchText(name, input.description(), input.brandName(), category.getName()));
+
+        Product savedProduct = productRepository.save(product);
+
+        Offer offer = new Offer();
+        offer.setProduct(savedProduct);
+        offer.setSku(sku);
+        offer.setPrice(price);
+        offer.setPriceCurrency("PLN");
+        offer.setStock(stock);
+        offer.setStatus("ACTIVE");
+        offerRepository.save(offer);
+
+        return savedProduct;
+    }
+
+    @Transactional
+    public Offer addOffer(AddOfferInput input) {
+        String sku = requireText(input.sku(), "SKU is required.");
+        BigDecimal price = requirePrice(input.price());
+        int stock = normalizeStock(input.stock());
+
+        Long productId = parseId(input.productId(), "Invalid productId.");
+        Product product = productRepository.findById(productId)
+                .orElseThrow(() -> new IllegalArgumentException("Product not found."));
+
+        if (offerRepository.existsBySku(sku)) {
+            throw new IllegalArgumentException("Offer SKU already exists.");
+        }
+
+        Offer offer = new Offer();
+        offer.setProduct(product);
+        offer.setSku(sku);
+        offer.setPrice(price);
+        offer.setPriceCurrency("PLN");
+        offer.setStock(stock);
+        offer.setStatus("ACTIVE");
+
+        List<AttributePair> attributePairs = collectAttributePairs(input);
+        for (AttributePair pair : attributePairs) {
+            Attribute attribute = resolveOrCreateTextAttribute(pair.name());
+            OfferAttributeValue value = new OfferAttributeValue();
+            value.setOffer(offer);
+            value.setAttribute(attribute);
+            value.setTextValue(pair.value());
+            offer.getAttributeValues().add(value);
+        }
+
+        return offerRepository.save(offer);
     }
 
     public Product getProductBySlug(String slug) {
@@ -222,4 +324,169 @@ public class OffersService {
         }
         return ids;
     }
+
+    private Brand resolveOrCreateBrand(String brandNameRaw) {
+        String brandName = trimToNull(brandNameRaw);
+        if (brandName == null) {
+            return null;
+        }
+
+        String slugBase = slugify(brandName);
+        if (slugBase.isBlank()) {
+            slugBase = "brand";
+        }
+
+        Brand existing = brandRepository.findBySlug(slugBase).orElse(null);
+        if (existing != null) {
+            if (!existing.isActive()) {
+                existing.setActive(true);
+            }
+            if (!existing.getName().equals(brandName)) {
+                existing.setName(brandName);
+            }
+            return brandRepository.save(existing);
+        }
+
+        Brand brand = new Brand();
+        brand.setName(brandName);
+        brand.setSlug(uniqueSlug(slugBase, slug -> brandRepository.findBySlug(slug).isPresent()));
+        brand.setActive(true);
+        return brandRepository.save(brand);
+    }
+
+    private Attribute resolveOrCreateTextAttribute(String attributeName) {
+        String codeBase = slugify(attributeName);
+        if (codeBase.isBlank()) {
+            codeBase = "attribute";
+        }
+
+        Attribute existing = attributeRepository.findByCode(codeBase).orElse(null);
+        if (existing != null) {
+            return existing;
+        }
+
+        Attribute attribute = new Attribute();
+        attribute.setCode(uniqueSlug(codeBase, attributeRepository::existsByCode));
+        attribute.setName(attributeName);
+        attribute.setDataType("TEXT");
+        attribute.setUnit(null);
+        attribute.setVariantAxis(false);
+        return attributeRepository.save(attribute);
+    }
+
+    private String uniqueSlug(String baseText, Predicate<String> existsCheck) {
+        String base = slugify(baseText);
+        if (base.isBlank()) {
+            base = "item";
+        }
+
+        String candidate = base;
+        int suffix = 2;
+        while (existsCheck.test(candidate)) {
+            candidate = base + "-" + suffix;
+            suffix++;
+        }
+
+        return candidate;
+    }
+
+    private String slugify(String input) {
+        if (input == null) {
+            return "";
+        }
+
+        String normalized = Normalizer.normalize(input, Normalizer.Form.NFD)
+                .replaceAll("\\p{M}+", "")
+                .toLowerCase(Locale.ROOT)
+                .replaceAll("[^a-z0-9]+", "-")
+                .replaceAll("(^-+|-+$)", "");
+
+        return normalized;
+    }
+
+    private Long parseId(String value, String message) {
+        try {
+            return Long.parseLong(requireText(value, message));
+        } catch (NumberFormatException ex) {
+            throw new IllegalArgumentException(message);
+        }
+    }
+
+    private BigDecimal requirePrice(Double value) {
+        if (value == null || value <= 0d) {
+            throw new IllegalArgumentException("Price must be greater than zero.");
+        }
+        return BigDecimal.valueOf(value);
+    }
+
+    private int normalizeStock(Integer value) {
+        if (value == null) {
+            return 0;
+        }
+        return Math.max(0, value);
+    }
+
+    private String requireText(String value, String message) {
+        String trimmed = trimToNull(value);
+        if (trimmed == null) {
+            throw new IllegalArgumentException(message);
+        }
+        return trimmed;
+    }
+
+    private String trimToNull(String value) {
+        if (value == null) {
+            return null;
+        }
+        String trimmed = value.trim();
+        return trimmed.isEmpty() ? null : trimmed;
+    }
+
+    private String buildSearchText(String name, String description, String brandName, String categoryName) {
+        List<String> parts = new ArrayList<>();
+        if (name != null) {
+            parts.add(name.trim());
+        }
+        if (description != null && !description.isBlank()) {
+            parts.add(description.trim());
+        }
+        if (brandName != null && !brandName.isBlank()) {
+            parts.add(brandName.trim());
+        }
+        if (categoryName != null && !categoryName.isBlank()) {
+            parts.add(categoryName.trim());
+        }
+        return String.join(" ", parts).toLowerCase(Locale.ROOT);
+    }
+
+    private List<AttributePair> collectAttributePairs(AddOfferInput input) {
+        LinkedHashMap<String, AttributePair> dedupedByCode = new LinkedHashMap<>();
+
+        if (input.attributes() != null) {
+            for (AddOfferAttributeInput attr : input.attributes()) {
+                if (attr == null) {
+                    continue;
+                }
+
+                String name = trimToNull(attr.name());
+                String value = trimToNull(attr.value());
+                if (name == null || value == null) {
+                    continue;
+                }
+
+                dedupedByCode.put(slugify(name), new AttributePair(name, value));
+            }
+        }
+
+        // Backward compatibility for older clients that still send one attribute.
+        String legacyName = trimToNull(input.attributeName());
+        String legacyValue = trimToNull(input.attributeValue());
+        if (legacyName != null && legacyValue != null) {
+            dedupedByCode.putIfAbsent(slugify(legacyName), new AttributePair(legacyName, legacyValue));
+        }
+
+        return new ArrayList<>(dedupedByCode.values());
+    }
+
+    private record AttributePair(String name, String value) {}
 }

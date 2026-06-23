@@ -11,4 +11,6 @@ public interface ProductRepository extends JpaRepository<Product, Long>, JpaSpec
     
     @Query("SELECT p FROM Product p LEFT JOIN FETCH p.brand LEFT JOIN FETCH p.category WHERE p.slug = :slug AND p.status = 'ACTIVE'")
     Optional<Product> findBySlugAndStatusActive(@Param("slug") String slug);
+
+    boolean existsBySlug(String slug);
 }
