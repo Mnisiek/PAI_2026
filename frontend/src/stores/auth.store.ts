@@ -16,6 +16,11 @@ interface PersistedAuthState {
 
 const AUTH_STORAGE_KEY = 'ecommerce-auth-state'
 
+const isLikelyJwt = (token: string): boolean => {
+  const segments = token.split('.')
+  return segments.length === 3 && segments.every((segment) => segment.length > 0)
+}
+
 const readAuthFromStorage = (): PersistedAuthState => {
   if (!import.meta.client) {
     return { user: null, token: null }
@@ -29,10 +34,11 @@ const readAuthFromStorage = (): PersistedAuthState => {
     }
 
     const parsedValue = JSON.parse(rawValue) as PersistedAuthState
+    const token = parsedValue.token ?? null
 
     return {
       user: parsedValue.user ?? null,
-      token: parsedValue.token ?? null,
+      token: token && isLikelyJwt(token) ? token : null,
     }
   } catch {
     return { user: null, token: null }

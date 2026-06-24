@@ -30,8 +30,8 @@ The following step-by-step guide will help you run the full development environm
 To run local instances of **PostgreSQL**, **ClickHouse** and **Valkey** for host-based
 development, navigate to the main project directory and execute:
 
-```bash
-docker compose -f docker/infra/docker-compose.yml up -d
+```
+docker-compose up -d
 ```
 
 The infrastructure will spin up in the background. Make sure the containers are running

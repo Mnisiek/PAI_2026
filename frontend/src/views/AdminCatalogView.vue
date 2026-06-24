@@ -5,23 +5,34 @@ import BaseCard from '../components/base/BaseCard.vue'
 import AdminNav from '../components/admin/AdminNav.vue'
 import { useCurrency } from '../composables/useCurrency'
 import { catalogAdminService } from '../services/catalogAdmin.service'
-import { categories } from '../mocks/catalogData'
-import type { Product } from '../types/catalog'
+import { catalogService } from '../services/catalog.service'
+import type { Category, Product } from '../types/catalog'
 
 const { formatPrice } = useCurrency()
 
-const leafCategories = categories.filter((category) => category.isLeaf)
+const leafCategories = ref<Category[]>([])
 const productList = ref<Product[]>([])
-const refreshList = (): void => {
-  productList.value = [...catalogAdminService.listProducts()]
+const refreshList = async (): Promise<void> => {
+  const [products, categories] = await Promise.all([
+    catalogAdminService.listProducts(),
+    catalogService.getCategories(),
+  ])
+
+  productList.value = products
+  leafCategories.value = categories.filter((category) => category.isLeaf)
+
+  if (!productForm.categoryId && leafCategories.value.length > 0) {
+    productForm.categoryId = leafCategories.value[0].id
+  }
 }
-refreshList()
+
+void refreshList()
 
 // --- Add product ---
 const productForm = reactive({
   name: '',
   description: '',
-  categoryId: leafCategories[0]?.id ?? '',
+  categoryId: '',
   price: 0,
   imageUrl: '',
   brandName: '',
@@ -31,7 +42,7 @@ const productForm = reactive({
 const productMessage = ref<string | null>(null)
 const productError = ref<string | null>(null)
 
-const submitProduct = (): void => {
+const submitProduct = async (): Promise<void> => {
   productMessage.value = null
   productError.value = null
 
@@ -45,7 +56,7 @@ const submitProduct = (): void => {
   }
 
   try {
-    const created = catalogAdminService.addProduct({
+    const created = await catalogAdminService.addProduct({
       name: productForm.name.trim(),
       description: productForm.description.trim(),
       categoryId: productForm.categoryId,
@@ -63,7 +74,7 @@ const submitProduct = (): void => {
     productForm.brandName = ''
     productForm.sku = ''
     productForm.stock = 0
-    refreshList()
+    await refreshList()
   } catch (caught) {
     productError.value = caught instanceof Error ? caught.message : 'Nie udało się dodać produktu.'
   }
@@ -75,15 +86,31 @@ const offerForm = reactive({
   sku: '',
   price: 0,
   stock: 0,
-  attributeName: '',
-  attributeValue: '',
 })
+type OfferAttributeRow = {
+  name: string
+  value: string
+}
+const offerAttributes = ref<OfferAttributeRow[]>([{ name: '', value: '' }])
 const offerMessage = ref<string | null>(null)
 const offerError = ref<string | null>(null)
 
 const productOptions = computed(() => productList.value)
 
-const submitOffer = (): void => {
+const addOfferAttributeRow = (): void => {
+  offerAttributes.value.push({ name: '', value: '' })
+}
+
+const removeOfferAttributeRow = (index: number): void => {
+  if (offerAttributes.value.length === 1) {
+    offerAttributes.value[0] = { name: '', value: '' }
+    return
+  }
+
+  offerAttributes.value.splice(index, 1)
+}
+
+const submitOffer = async (): Promise<void> => {
   offerMessage.value = null
   offerError.value = null
 
@@ -100,22 +127,33 @@ const submitOffer = (): void => {
     return
   }
 
+  const cleanedAttributes = offerAttributes.value
+    .map((row) => ({
+      name: row.name.trim(),
+      value: row.value.trim(),
+    }))
+    .filter((row) => row.name || row.value)
+
+  const hasIncompleteAttribute = cleanedAttributes.some((row) => !row.name || !row.value)
+  if (hasIncompleteAttribute) {
+    offerError.value = 'Każda cecha wariantu musi mieć nazwę i wartość.'
+    return
+  }
+
   try {
-    catalogAdminService.addOffer({
+    await catalogAdminService.addOffer({
       productId: offerForm.productId,
       sku: offerForm.sku.trim(),
       price: Number(offerForm.price),
       stock: Number(offerForm.stock),
-      attributeName: offerForm.attributeName.trim() || undefined,
-      attributeValue: offerForm.attributeValue.trim() || undefined,
+      attributes: cleanedAttributes.length > 0 ? cleanedAttributes : undefined,
     })
     offerMessage.value = 'Dodano wariant.'
     offerForm.sku = ''
     offerForm.price = 0
     offerForm.stock = 0
-    offerForm.attributeName = ''
-    offerForm.attributeValue = ''
-    refreshList()
+    offerAttributes.value = [{ name: '', value: '' }]
+    await refreshList()
   } catch (caught) {
     offerError.value = caught instanceof Error ? caught.message : 'Nie udało się dodać wariantu.'
   }
@@ -135,7 +173,7 @@ const submitOffer = (): void => {
       <AdminNav />
 
       <p class="catalog-admin__note">
-        To mock — dodane pozycje są widoczne w sklepie do czasu odświeżenia strony.
+        Dodawanie korzysta z backendowych mutacji GraphQL i zapisuje dane na stałe.
       </p>
 
       <div class="catalog-admin__forms">
@@ -180,7 +218,7 @@ const submitOffer = (): void => {
             </div>
             <label class="form__field">
               <span>URL zdjęcia</span>
-              <input v-model="productForm.imageUrl" type="url" placeholder="https://…" />
+              <input v-model="productForm.imageUrl" type="url" placeholder="https://..." />
             </label>
 
             <p v-if="productError" class="form__error">{{ productError }}</p>
@@ -217,15 +255,44 @@ const submitOffer = (): void => {
                 <span>Stan magazynowy</span>
                 <input v-model.number="offerForm.stock" type="number" min="0" />
               </label>
-              <label class="form__field">
-                <span>Cecha wariantu</span>
-                <input v-model="offerForm.attributeName" type="text" placeholder="np. Kolor" />
-              </label>
             </div>
-            <label class="form__field">
-              <span>Wartość cechy</span>
-              <input v-model="offerForm.attributeValue" type="text" placeholder="np. Czerwony" />
-            </label>
+
+            <div class="form__field form__field--full">
+              <span>Cechy wariantu</span>
+              <div class="variant-attributes">
+                <div
+                  v-for="(attribute, index) in offerAttributes"
+                  :key="index"
+                  class="variant-attributes__row"
+                >
+                  <input
+                    v-model="attribute.name"
+                    type="text"
+                    placeholder="Nazwa cechy (np. Kolor)"
+                  />
+                  <input
+                    v-model="attribute.value"
+                    type="text"
+                    placeholder="Wartość (np. Czerwony)"
+                  />
+                  <button
+                    type="button"
+                    class="variant-attributes__remove"
+                    @click="removeOfferAttributeRow(index)"
+                  >
+                    Usuń
+                  </button>
+                </div>
+
+                <button
+                  type="button"
+                  class="variant-attributes__add"
+                  @click="addOfferAttributeRow"
+                >
+                  Dodaj cechę
+                </button>
+              </div>
+            </div>
 
             <p v-if="offerError" class="form__error">{{ offerError }}</p>
             <p v-if="offerMessage" class="form__ok">{{ offerMessage }}</p>
@@ -336,6 +403,10 @@ const submitOffer = (): void => {
   color: var(--color-text-secondary);
 }
 
+.form__field--full {
+  width: 100%;
+}
+
 .form__field input,
 .form__field select,
 .form__field textarea {
@@ -381,6 +452,43 @@ const submitOffer = (): void => {
   background: #0d6660;
 }
 
+.variant-attributes {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+}
+
+.variant-attributes__row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto;
+  gap: 0.55rem;
+}
+
+.variant-attributes__add,
+.variant-attributes__remove {
+  border: 1px solid var(--color-border-soft);
+  border-radius: 10px;
+  background: #fff;
+  color: var(--color-text-secondary);
+  font: inherit;
+  cursor: pointer;
+}
+
+.variant-attributes__add {
+  align-self: flex-start;
+  padding: 0.45rem 0.8rem;
+}
+
+.variant-attributes__remove {
+  padding: 0.45rem 0.7rem;
+}
+
+.variant-attributes__add:hover,
+.variant-attributes__remove:hover {
+  border-color: var(--color-brand-strong);
+  color: var(--color-brand-strong);
+}
+
 .catalog-list {
   list-style: none;
   margin: 0;
@@ -421,6 +529,16 @@ const submitOffer = (): void => {
 @media (min-width: 820px) {
   .catalog-admin__forms {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 640px) {
+  .variant-attributes__row {
+    grid-template-columns: 1fr;
+  }
+
+  .variant-attributes__remove {
+    justify-self: start;
   }
 }
 </style>

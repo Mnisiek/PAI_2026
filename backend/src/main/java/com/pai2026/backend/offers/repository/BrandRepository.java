@@ -6,4 +6,5 @@ import java.util.Optional;
 
 public interface BrandRepository extends JpaRepository<Brand, Long> {
     Optional<Brand> findBySlugAndIsActiveTrue(String slug);
+    Optional<Brand> findBySlug(String slug);
 }

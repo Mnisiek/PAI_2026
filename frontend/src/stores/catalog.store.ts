@@ -9,8 +9,7 @@ interface CatalogState {
   isLoading: boolean
   error: string | null
   searchQuery: string
-  selectedParentCategoryId: string | null
-  selectedSubcategoryId: string | null
+  selectedCategoryPathIds: string[]
   initialized: boolean
   requestToken: number
 }
@@ -32,23 +31,28 @@ export const useCatalogStore = defineStore('catalog', {
     isLoading: false,
     error: null,
     searchQuery: '',
-    selectedParentCategoryId: null,
-    selectedSubcategoryId: null,
+    selectedCategoryPathIds: [],
     initialized: false,
     requestToken: 0,
   }),
 
   getters: {
     hasFilters: (state): boolean =>
-      Boolean(state.searchQuery || state.selectedParentCategoryId || state.selectedSubcategoryId),
+      Boolean(state.searchQuery || state.selectedCategoryPathIds.length > 0),
     selectedCategoryId: (state): string | null =>
-      state.selectedSubcategoryId ?? state.selectedParentCategoryId,
-    parentCategories: (state): Category[] =>
-      state.categories.filter((category) => category.parentId === null),
-    activeSubcategories: (state): Category[] =>
-      state.selectedParentCategoryId
-        ? state.categories.filter((category) => category.parentId === state.selectedParentCategoryId)
-        : [],
+      state.selectedCategoryPathIds[state.selectedCategoryPathIds.length - 1] ?? null,
+    categoryPath: (state): Category[] => {
+      const byId = new Map(state.categories.map((category) => [category.id, category]))
+
+      return state.selectedCategoryPathIds
+        .map((categoryId) => byId.get(categoryId))
+        .filter((category): category is Category => Boolean(category))
+    },
+    activeSubcategories: (state): Category[] => {
+      const selectedCategoryId = state.selectedCategoryPathIds[state.selectedCategoryPathIds.length - 1] ?? null
+      return state.categories.filter((category) => category.parentId === selectedCategoryId)
+    },
+    canGoUp: (state): boolean => state.selectedCategoryPathIds.length > 0,
   },
 
   actions: {
@@ -114,15 +118,53 @@ export const useCatalogStore = defineStore('catalog', {
       await this.refreshProducts()
     },
 
-    async setParentCategory(categoryId: string | null): Promise<void> {
-      this.selectedParentCategoryId = categoryId
-      this.selectedSubcategoryId = null
+    async setCategory(categoryId: string | null): Promise<void> {
+      if (!categoryId) {
+        this.selectedCategoryPathIds = []
+        await this.refreshProducts()
+        return
+      }
+
+      const byId = new Map(this.categories.map((category) => [category.id, category]))
+      const path: string[] = []
+
+      let current = byId.get(categoryId) ?? null
+      while (current) {
+        path.push(current.id)
+        current = current.parentId ? byId.get(current.parentId) ?? null : null
+      }
+
+      this.selectedCategoryPathIds = path.reverse()
       await this.refreshProducts()
     },
 
-    async setSubcategory(categoryId: string | null): Promise<void> {
-      this.selectedSubcategoryId = categoryId
+    async goToPathIndex(index: number): Promise<void> {
+      if (index < 0) {
+        this.selectedCategoryPathIds = []
+        await this.refreshProducts()
+        return
+      }
+
+      this.selectedCategoryPathIds = this.selectedCategoryPathIds.slice(0, index + 1)
       await this.refreshProducts()
+    },
+
+    async goUpCategory(): Promise<void> {
+      if (this.selectedCategoryPathIds.length === 0) {
+        return
+      }
+
+      this.selectedCategoryPathIds = this.selectedCategoryPathIds.slice(0, -1)
+      await this.refreshProducts()
+    },
+
+    // Backward-compatible wrappers used by older views.
+    async setParentCategory(categoryId: string | null): Promise<void> {
+      await this.setCategory(categoryId)
+    },
+
+    async setSubcategory(categoryId: string | null): Promise<void> {
+      await this.setCategory(categoryId)
     },
   },
 })

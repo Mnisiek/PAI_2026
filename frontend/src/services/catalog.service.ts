@@ -1,4 +1,4 @@
-import { apolloClient } from './apolloClient'
+import { getApolloClient } from '../apollo clients/apolloClient'
 import { GET_CATEGORIES, GET_PRODUCT, GET_PRODUCTS } from '../graphql/catalog.queries'
 import type { CatalogFilterInput, Category, Product } from '../types/catalog'
 import { useCatalogStore } from '../stores/catalog.store'
@@ -23,13 +23,55 @@ interface ProductResponse {
   }
 }
 
-// Flatten the rootCategories tree into the flat (parentId-based) list the store expects.
-const flattenCategories = (roots: Category[]): Category[] =>
-  roots.flatMap((root) => [root, ...(root.children ?? [])])
+const asId = (value: unknown): string | null => {
+  if (value === null || value === undefined) {
+    return null
+  }
+  return String(value)
+}
+
+const normalizeCategory = (category: Category): Category => ({
+  ...category,
+  id: asId(category.id) ?? '',
+  parentId: asId(category.parentId),
+  children: category.children?.map(normalizeCategory),
+})
+
+const normalizeProduct = (product: Product): Product => ({
+  ...product,
+  id: asId(product.id) ?? '',
+  category: normalizeCategory(product.category),
+  offers: product.offers.map((offer) => ({
+    ...offer,
+    id: asId(offer.id) ?? '',
+  })),
+})
+
+// Flatten the full rootCategories tree into a flat (parentId-based) list.
+const flattenCategories = (roots: Category[]): Category[] => {
+  const flattened: Category[] = []
+
+  const visit = (node: Category): void => {
+    const normalizedNode = normalizeCategory(node)
+    flattened.push(normalizedNode)
+
+    for (const child of normalizedNode.children ?? []) {
+      visit(child)
+    }
+  }
+
+  for (const root of roots) {
+    visit(root)
+  }
+
+  return flattened
+}
 
 export const catalogService = {
   async getCategories(): Promise<Category[]> {
-    const { data } = await apolloClient.query<CategoriesResponse>({
+    const client = getApolloClient()
+
+    const { data } = await client.query<CategoriesResponse>({
       query: GET_CATEGORIES,
     })
 
@@ -41,6 +83,7 @@ export const catalogService = {
   },
 
   async getProducts(filter: CatalogFilterInput): Promise<Product[]> {
+    const client = getApolloClient()
     let categorySlug: string | null = null
 
     if (filter.categoryId) {
@@ -55,7 +98,7 @@ export const catalogService = {
       }
     }
 
-    const { data } = await apolloClient.query<ProductsResponse, { search?: string | null; filter?: { categorySlug?: string | null } | null }>({
+    const { data } = await client.query<ProductsResponse, { search?: string | null; filter?: { categorySlug?: string | null } | null }>({
       query: GET_PRODUCTS,
       variables: {
         search: filter.search || null,
@@ -67,11 +110,13 @@ export const catalogService = {
       throw new Error('Products query returned no data.')
     }
 
-    return data.offersModule.products.items
+    return data.offersModule.products.items.map(normalizeProduct)
   },
 
   async getProductBySlug(slug: string): Promise<Product | null> {
-    const { data } = await apolloClient.query<ProductResponse, { slug: string }>({
+    const client = getApolloClient()
+
+    const { data } = await client.query<ProductResponse, { slug: string }>({
       query: GET_PRODUCT,
       variables: { slug },
     })
@@ -80,6 +125,6 @@ export const catalogService = {
       throw new Error('Product query returned no data.')
     }
 
-    return data.offersModule.product
+    return data.offersModule.product ? normalizeProduct(data.offersModule.product) : null
   },
 }

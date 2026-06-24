@@ -6,4 +6,5 @@ import java.util.List;
 
 public interface OfferRepository extends JpaRepository<Offer, Long> {
     List<Offer> findByProductIdInAndStatus(List<Long> productIds, String status);
+    boolean existsBySku(String sku);
 }

@@ -1,12 +1,11 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
-import { useRouter } from 'vue-router'
+
 import MainLayout from '../layouts/MainLayout.vue'
 import BaseInput from '../components/base/BaseInput.vue'
 import { useAuthStore } from '../stores/auth.store'
 
 const authStore = useAuthStore()
-const router = useRouter()
 
 const email = ref('jan@example.com')
 const password = ref('demo1234')
@@ -25,7 +24,7 @@ const submit = async (): Promise<void> => {
   const loggedIn = await authStore.login(email.value, password.value)
 
   if (loggedIn) {
-    await router.push('/')
+    await navigateTo('/')
   }
 }
 </script>
@@ -36,7 +35,7 @@ const submit = async (): Promise<void> => {
       <article class="login-card">
         <p class="login-card__eyebrow">Konto użytkownika</p>
         <h2>Logowanie</h2>
-        <p class="login-card__hint">Użyj konta demo, aby sprawdzić działanie uwierzytelniania przez mock GraphQL.</p>
+        <p class="login-card__hint">Zaloguj się, aby kontynuować.</p>
 
         <form class="login-form" @submit.prevent="submit">
           <label>
