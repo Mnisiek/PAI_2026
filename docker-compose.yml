@@ -52,6 +52,8 @@ services:
     environment:
       # SSR fetches stats straight from the backend over the compose network.
       NUXT_ACTIVITY_API_INTERNAL: http://backend:8080/graphql
+      # SSR Apollo Client uses this absolute URL to reach the backend directly.
+      NUXT_GRAPHQL_INTERNAL: http://backend:8080/graphql
     ports:
       - "3000:3000"
     depends_on:

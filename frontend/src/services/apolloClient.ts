@@ -1,9 +1,13 @@
 import { ApolloClient, InMemoryCache, createHttpLink } from '@apollo/client/core'
 import { setContext } from '@apollo/client/link/context'
 
-const httpLink = createHttpLink({
-  uri: 'http://localhost:8080/graphql',
-})
+// SSR (Node.js) requires an absolute URL — relative URLs are invalid outside the browser.
+// The browser uses /graphql which Nuxt's routeRules proxy forwards to the backend.
+const uri = import.meta.server
+  ? (process.env.NUXT_GRAPHQL_INTERNAL ?? 'http://localhost:8080/graphql')
+  : '/graphql'
+
+const httpLink = createHttpLink({ uri })
 
 const authLink = setContext((_, { headers }) => {
   let token: string | null = null
