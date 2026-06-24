@@ -44,6 +44,7 @@ const pct = (value: number, max: number): string => `${Math.round((value / max) 
 const dayInMs = 24 * 60 * 60 * 1000
 const computeFrom = (days: number): string => new Date(Date.now() - days * dayInMs).toISOString()
 
+const loadStats = async (): Promise<void> => {
   try {
     const [activityStats, categories] = await Promise.all([
       analyticsService.getActivityStats(),

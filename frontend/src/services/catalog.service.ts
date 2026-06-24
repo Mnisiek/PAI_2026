@@ -75,11 +75,8 @@ const flattenCategories = (roots: Category[]): Category[] => {
 
 export const catalogService = {
   async getCategories(): Promise<Category[]> {
-<<<<<<< HEAD
-    await sleep(randomLatency())
-=======
->>>>>>> 6840aee (-> Connects backend with frontend)
     const client = getApolloClient()
+    
 
     const { data } = await client.query<CategoriesResponse>({
       query: GET_CATEGORIES,
@@ -92,13 +89,12 @@ export const catalogService = {
     return flattenCategories(data.offersModule.rootCategories)
   },
 
-  async getProducts(filter: CatalogFilterInput): Promise<Product[]> {
-    await sleep(randomLatency())
+  async getProducts(filter: any): Promise<any[]> {
     const client = getApolloClient()
+    await sleep(randomLatency())
+    
+      let categorySlug = undefined;
 
-<<<<<<< HEAD
-    const { data } = await client.query<ProductsResponse, { filter: CatalogFilterInput }>({
-=======
     if (filter.categoryId) {
       try {
         const catalogStore = useCatalogStore()
@@ -111,12 +107,11 @@ export const catalogService = {
       }
     }
 
-    const client = getApolloClient()
+    
 
     const { data } = await client.query<ProductsResponse, { search?: string | null; filter?: { categorySlug?: string | null } | null }>({
->>>>>>> 6840aee (-> Connects backend with frontend)
       query: GET_PRODUCTS,
-      variables: { filter },
+      variables: { filter: { categorySlug: filter.categoryId ? categorySlug : undefined } },
     })
 
     if (!data) {
@@ -127,11 +122,8 @@ export const catalogService = {
   },
 
   async getProductBySlug(slug: string): Promise<Product | null> {
-<<<<<<< HEAD
-    await sleep(randomLatency())
-=======
->>>>>>> 6840aee (-> Connects backend with frontend)
     const client = getApolloClient()
+    
 
     const { data } = await client.query<ProductResponse, { slug: string }>({
       query: GET_PRODUCT,
