@@ -1,6 +1,6 @@
-query GetProducts($filter: ProductFilter) {
+query GetProducts($search: String, $filter: ProductFilter) {
   offersModule {
-    products(filter: $filter) {
+    products(search: $search, filter: $filter) {
       total
       items {
         id

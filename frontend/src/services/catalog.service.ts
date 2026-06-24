@@ -1,6 +1,7 @@
 import { getApolloClient } from '../apollo clients/apolloClient'
 import { GET_CATEGORIES, GET_PRODUCT, GET_PRODUCTS } from '../graphql/catalog.queries'
 import type { CatalogFilterInput, Category, Product } from '../types/catalog'
+import { useCatalogStore } from '../stores/catalog.store'
 
 interface CategoriesResponse {
   offersModule: {
@@ -21,13 +22,6 @@ interface ProductResponse {
     product: Product | null
   }
 }
-
-const sleep = (ms: number): Promise<void> =>
-  new Promise((resolve) => {
-    setTimeout(resolve, ms)
-  })
-
-const randomLatency = (): number => 250 + Math.floor(Math.random() * 550)
 
 const asId = (value: unknown): string | null => {
   if (value === null || value === undefined) {
@@ -76,7 +70,6 @@ const flattenCategories = (roots: Category[]): Category[] => {
 export const catalogService = {
   async getCategories(): Promise<Category[]> {
     const client = getApolloClient()
-    
 
     const { data } = await client.query<CategoriesResponse>({
       query: GET_CATEGORIES,
@@ -89,11 +82,9 @@ export const catalogService = {
     return flattenCategories(data.offersModule.rootCategories)
   },
 
-  async getProducts(filter: any): Promise<any[]> {
+  async getProducts(filter: CatalogFilterInput): Promise<Product[]> {
     const client = getApolloClient()
-    await sleep(randomLatency())
-    
-      let categorySlug = undefined;
+    let categorySlug: string | null = null
 
     if (filter.categoryId) {
       try {
@@ -107,11 +98,12 @@ export const catalogService = {
       }
     }
 
-    
-
     const { data } = await client.query<ProductsResponse, { search?: string | null; filter?: { categorySlug?: string | null } | null }>({
       query: GET_PRODUCTS,
-      variables: { filter: { categorySlug: filter.categoryId ? categorySlug : undefined } },
+      variables: {
+        search: filter.search || null,
+        filter: categorySlug ? { categorySlug } : null,
+      },
     })
 
     if (!data) {
@@ -123,7 +115,6 @@ export const catalogService = {
 
   async getProductBySlug(slug: string): Promise<Product | null> {
     const client = getApolloClient()
-    
 
     const { data } = await client.query<ProductResponse, { slug: string }>({
       query: GET_PRODUCT,

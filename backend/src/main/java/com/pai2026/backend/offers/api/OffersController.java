@@ -45,7 +45,6 @@ public class OffersController {
     public Offer addOffer(@Argument AddOfferInput input) {
         return offersService.addOffer(input);
     }
-
     @SchemaMapping(typeName = "OffersModuleQuery")
     public Product product(@Argument String slug) {
         return offersService.getProductBySlug(slug);

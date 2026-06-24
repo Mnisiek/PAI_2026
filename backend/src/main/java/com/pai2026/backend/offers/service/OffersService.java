@@ -324,7 +324,6 @@ public class OffersService {
         }
         return ids;
     }
-
     private Brand resolveOrCreateBrand(String brandNameRaw) {
         String brandName = trimToNull(brandNameRaw);
         if (brandName == null) {
