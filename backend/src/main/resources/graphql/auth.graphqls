@@ -1,0 +1,19 @@
+extend type Mutation {
+    login(input: LoginInput!): AuthPayload!
+}
+
+input LoginInput {
+    email: String!
+    password: String!
+}
+
+type User {
+    id: ID!
+    name: String!
+    email: String!
+}
+
+type AuthPayload {
+    token: String!
+    user: User!
+}

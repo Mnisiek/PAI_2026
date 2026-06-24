@@ -1,0 +1,44 @@
+mutation AddProduct($input: AddProductInput!) {
+  addProduct(input: $input) {
+    id
+    slug
+    name
+    description
+    mainImageUrl
+    priceFrom {
+      amount
+      currency
+    }
+    offers {
+      id
+      sku
+      price {
+        amount
+        currency
+      }
+      stock
+      status
+      attributes {
+        code
+        name
+        dataType
+        unit
+        textValue
+        numValue
+        boolValue
+      }
+    }
+    brand {
+      id
+      name
+      slug
+    }
+    category {
+      id
+      name
+      slug
+      parentId
+      isLeaf
+    }
+  }
+}

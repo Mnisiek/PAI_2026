@@ -1,0 +1,21 @@
+mutation AddOffer($input: AddOfferInput!) {
+  addOffer(input: $input) {
+    id
+    sku
+    stock
+    status
+    price {
+      amount
+      currency
+    }
+    attributes {
+      code
+      name
+      dataType
+      unit
+      textValue
+      numValue
+      boolValue
+    }
+  }
+}

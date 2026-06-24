@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import OffersView from '../views/OffersView.vue'
+import HomeView from '../views/HomeView.vue'
 </script>
 
 <template>
-  <OffersView />
+  <HomeView />
 </template>

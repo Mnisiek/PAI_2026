@@ -7,10 +7,23 @@ import { catalogAdminService } from '../services/catalogAdmin.service'
 import type { Category } from '../types/catalog'
 
 const categoryList = ref<Category[]>([])
-const refreshList = (): void => {
-  categoryList.value = [...catalogAdminService.listCategories()]
+const isLoading = ref(false)
+const error = ref<string | null>(null)
+
+const refreshList = async (): Promise<void> => {
+  isLoading.value = true
+  error.value = null
+
+  try {
+    categoryList.value = await catalogAdminService.listCategories()
+  } catch (caught) {
+    error.value = caught instanceof Error ? caught.message : 'Nie udało się pobrać kategorii.'
+  } finally {
+    isLoading.value = false
+  }
 }
-refreshList()
+
+void refreshList()
 
 const nameById = computed(() => new Map(categoryList.value.map((category) => [category.id, category.name])))
 const parentName = (parentId: string | null): string =>
@@ -21,9 +34,8 @@ const form = reactive({
   parentId: '',
 })
 const message = ref<string | null>(null)
-const error = ref<string | null>(null)
 
-const submit = (): void => {
+const submit = async (): Promise<void> => {
   message.value = null
   error.value = null
 
@@ -33,14 +45,14 @@ const submit = (): void => {
   }
 
   try {
-    const created = catalogAdminService.addCategory({
+    const created = await catalogAdminService.addCategory({
       name: form.name.trim(),
       parentId: form.parentId || null,
     })
     message.value = `Dodano kategorię „${created.name}".`
     form.name = ''
     form.parentId = ''
-    refreshList()
+    await refreshList()
   } catch (caught) {
     error.value = caught instanceof Error ? caught.message : 'Nie udało się dodać kategorii.'
   }
@@ -60,7 +72,7 @@ const submit = (): void => {
       <AdminNav />
 
       <p class="cat-admin__note">
-        To mock — nowe kategorie są widoczne w nawigacji sklepu do czasu odświeżenia strony.
+        Dodawanie kategorii korzysta z backendowej mutacji GraphQL i zapisuje dane na stałe.
       </p>
 
       <div class="cat-admin__grid">
@@ -90,6 +102,7 @@ const submit = (): void => {
 
         <BaseCard class="panel">
           <h2 class="panel__title">Kategorie ({{ categoryList.length }})</h2>
+          <p v-if="isLoading" class="form__ok">Odświeżanie listy kategorii...</p>
           <ul class="cat-list">
             <li v-for="category in categoryList" :key="category.id" class="cat-list__row">
               <span class="cat-list__name">{{ category.name }}</span>

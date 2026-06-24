@@ -10,10 +10,10 @@ const catalogStore = useCatalogStore()
 
 const searchQuery = ref(catalogStore.searchQuery)
 
-const selectedParentCategoryId = computed(() => catalogStore.selectedParentCategoryId)
-const selectedSubcategoryId = computed(() => catalogStore.selectedSubcategoryId)
-const parentCategories = computed(() => catalogStore.parentCategories)
-const subcategories = computed(() => catalogStore.activeSubcategories)
+const selectedCategoryId = computed(() => catalogStore.selectedCategoryId)
+const categoryPath = computed(() => catalogStore.categoryPath)
+const currentCategories = computed(() => catalogStore.activeSubcategories)
+const canGoUp = computed(() => catalogStore.canGoUp)
 
 const productsCounterLabel = computed(() => {
   if (catalogStore.isLoading) {
@@ -23,12 +23,20 @@ const productsCounterLabel = computed(() => {
   return `Liczba ofert: ${catalogStore.products.length}`
 })
 
-const selectParentCategory = (categoryId: string | null): void => {
-  void catalogStore.setParentCategory(categoryId)
+const selectCategory = (categoryId: string | null): void => {
+  void catalogStore.setCategory(categoryId)
 }
 
-const selectSubcategory = (categoryId: string | null): void => {
-  void catalogStore.setSubcategory(categoryId)
+const goRoot = (): void => {
+  void catalogStore.setCategory(null)
+}
+
+const goUp = (): void => {
+  void catalogStore.goUpCategory()
+}
+
+const goToPathIndex = (index: number): void => {
+  void catalogStore.goToPathIndex(index)
 }
 
 const applySearch = (): void => {
@@ -54,13 +62,15 @@ await useAsyncData('catalog-initial-data', async () => {
 
     <section class="offers-layout">
       <CategoryPills
-        :parent-categories="parentCategories"
-        :subcategories="subcategories"
-        :selected-parent-category-id="selectedParentCategoryId"
-        :selected-subcategory-id="selectedSubcategoryId"
+        :category-path="categoryPath"
+        :current-categories="currentCategories"
+        :selected-category-id="selectedCategoryId"
+        :can-go-up="canGoUp"
         :loading="catalogStore.isLoading"
-        @select-parent="selectParentCategory"
-        @select-subcategory="selectSubcategory"
+        @select-category="selectCategory"
+        @go-root="goRoot"
+        @go-up="goUp"
+        @go-path-index="goToPathIndex"
       />
 
       <ProductGrid

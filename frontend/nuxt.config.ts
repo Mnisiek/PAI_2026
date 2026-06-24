@@ -4,15 +4,16 @@ export default defineNuxtConfig({
   srcDir: 'src/',
   modules: ['@pinia/nuxt'],
   css: ['~/style.css'],
+  experimental: {
+    appManifest: false,
+  },
   vite: {
     plugins: [tailwindcss()],
   },
   runtimeConfig: {
-    // Server-side (SSR) calls the backend directly — the `/graphql` proxy below
-    // only applies to browser requests, so a relative URL fails during SSR.
-    activityApiInternal: process.env.NUXT_ACTIVITY_API_INTERNAL ?? 'http://localhost:8080/graphql',
+    internalGraphqlApi: process.env.NUXT_INTERNAL_GRAPHQL_API ?? 'http://localhost:8080/graphql',
     public: {
-      // Browser uses the proxied route rule below.
+      graphqlApi: process.env.NUXT_PUBLIC_GRAPHQL_API ?? '/graphql',
       activityApi: process.env.NUXT_PUBLIC_ACTIVITY_API ?? '/graphql',
     },
   },

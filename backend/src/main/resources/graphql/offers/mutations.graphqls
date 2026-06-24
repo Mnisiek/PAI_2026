@@ -1,0 +1,42 @@
+# Offers admin mutations for catalog management.
+extend type Mutation {
+    "Create a category in the catalog tree."
+    addCategory(input: AddCategoryInput!): Category!
+
+    "Create a new product with its initial active offer."
+    addProduct(input: AddProductInput!): Product!
+
+    "Add a new offer (variant) to an existing product."
+    addOffer(input: AddOfferInput!): Offer!
+}
+
+input AddCategoryInput {
+    name: String!
+    parentId: ID
+}
+
+input AddProductInput {
+    name: String!
+    description: String
+    categoryId: ID!
+    price: Float!
+    imageUrl: String
+    brandName: String
+    sku: String!
+    stock: Int!
+}
+
+input AddOfferInput {
+    productId: ID!
+    sku: String!
+    price: Float!
+    stock: Int!
+    attributeName: String
+    attributeValue: String
+    attributes: [AddOfferAttributeInput!]
+}
+
+input AddOfferAttributeInput {
+    name: String!
+    value: String!
+}
