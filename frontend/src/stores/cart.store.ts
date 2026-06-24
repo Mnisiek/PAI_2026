@@ -27,6 +27,10 @@ interface CartState {
 const CART_STORAGE_KEY = 'ecommerce-cart-state'
 
 const readCartFromStorage = (): CartItem[] => {
+  if (!import.meta.client) {
+    return []
+  }
+
   try {
     const rawValue = window.localStorage.getItem(CART_STORAGE_KEY)
 
@@ -42,6 +46,10 @@ const readCartFromStorage = (): CartItem[] => {
 }
 
 const persistCartState = (items: CartItem[]): void => {
+  if (!import.meta.client) {
+    return
+  }
+
   window.localStorage.setItem(CART_STORAGE_KEY, JSON.stringify(items))
 }
 
@@ -50,7 +58,7 @@ const findItemIndex = (items: CartItem[], productId: string): number =>
 
 export const useCartStore = defineStore('cart', {
   state: (): CartState => ({
-    items: readCartFromStorage(),
+    items: [],
     isOpen: false,
   }),
 
@@ -60,6 +68,10 @@ export const useCartStore = defineStore('cart', {
   },
 
   actions: {
+    hydrateFromStorage(): void {
+      this.items = readCartFromStorage()
+    },
+
     addToCart(product: Product, offer?: Offer): void {
       const selected = offer ?? product.offers?.[0]
 

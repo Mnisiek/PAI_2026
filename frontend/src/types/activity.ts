@@ -57,10 +57,16 @@ export interface DailyCount {
   count: number
 }
 
+export interface DailyTypeCount {
+  day: string
+  type: string
+  count: number
+}
+
 export interface ActivityStats {
   summary: ActivitySummary
   eventsByType: EventTypeCount[]
   topProducts: ProductActivity[]
   topCategories: CategoryActivity[]
-  eventsPerDay: DailyCount[]
+  eventsPerDayByType: DailyTypeCount[]
 }

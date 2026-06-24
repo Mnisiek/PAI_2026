@@ -27,14 +27,27 @@ The following step-by-step guide will help you run the full development environm
 * Installed `Node.js` along with a package manager (npm/yarn) for the frontend.
 
 ### 1. Running the Infrastructure (Databases)
-To run local instances of **PostgreSQL** and **ClickHouse**, navigate to the main project directory and execute the command:
+To run local instances of **PostgreSQL**, **ClickHouse** and **Valkey** for host-based
+development, navigate to the main project directory and execute:
 
-```
-bash
-docker-compose up -d
+```bash
+docker compose -f docker/infra/docker-compose.yml up -d
 ```
 
-The infrastructure will spin up in the background. Make sure both containers are running properly using the Docker Desktop application (or via docker ps).
+The infrastructure will spin up in the background. Make sure the containers are running
+properly using the Docker Desktop application (or via `docker ps`). Then continue with the
+backend and frontend steps below.
+
+> **Run the whole app in containers instead?** The repo-root `docker-compose.yml` builds and
+> runs everything — frontend, backend and the data stores — with the right startup ordering
+> (`frontend → backend → {clickhouse, postgres, valkey}`). It reuses the infra defined above
+> via `include`, so you can skip steps 2 and 3:
+>
+> ```bash
+> docker compose up --build
+> ```
+>
+> The storefront is then served at `http://localhost:3000` and the backend at `http://localhost:8080`.
 
 ### 2. Running the Backend (Java)
 Navigate to the `backend` directory and run the application using the Maven wrapper:

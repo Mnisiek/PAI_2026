@@ -4,6 +4,7 @@ import com.pai2026.backend.activity.api.dto.ActivityModuleQuery;
 import com.pai2026.backend.activity.api.dto.ActivitySummary;
 import com.pai2026.backend.activity.api.dto.CategoryActivity;
 import com.pai2026.backend.activity.api.dto.DailyCount;
+import com.pai2026.backend.activity.api.dto.DailyTypeCount;
 import com.pai2026.backend.activity.api.dto.EventTypeCount;
 import com.pai2026.backend.activity.api.dto.ProductActivity;
 import com.pai2026.backend.activity.service.ActivityAnalyticsService;
@@ -56,6 +57,11 @@ public class ActivityQueryController {
     @SchemaMapping(typeName = "ActivityModuleQuery")
     public List<DailyCount> eventsPerDay(@Argument String from, @Argument String to) {
         return analytics.eventsPerDay(parse(from), parse(to));
+    }
+
+    @SchemaMapping(typeName = "ActivityModuleQuery")
+    public List<DailyTypeCount> eventsPerDayByType(@Argument String from, @Argument String to) {
+        return analytics.eventsPerDayByType(parse(from), parse(to));
     }
 
     /** ISO-8601 instant, or null (→ service default window). */

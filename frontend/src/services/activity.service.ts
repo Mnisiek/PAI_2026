@@ -1,4 +1,4 @@
-import { activityClient } from './activityClient'
+import { getActivityClient } from './activityClient'
 import { RECORD_ACTIVITY_EVENT } from '../graphql/activity.queries'
 import type { ActivityEventInput, ActivityEventType } from '../types/activity'
 import type { Offer, Product } from '../types/catalog'
@@ -35,6 +35,10 @@ const getUserId = (): string | null => {
 
 // Fire-and-forget: analytics must never break the UX, so errors are swallowed.
 const send = (event: Partial<ActivityEventInput> & { type: ActivityEventType }): void => {
+  if (!import.meta.client) {
+    return
+  }
+
   const input: ActivityEventInput = {
     sessionId: getSessionId(),
     userId: getUserId(),
@@ -44,10 +48,10 @@ const send = (event: Partial<ActivityEventInput> & { type: ActivityEventType }):
     ...event,
   }
 
-  void activityClient
+  void getActivityClient()
     .mutate({ mutation: RECORD_ACTIVITY_EVENT, variables: { input } })
     .catch((error: unknown) => {
-      if (import.meta.env.DEV) {
+      if (import.meta.dev) {
         console.debug('[activity] event dropped', error)
       }
     })

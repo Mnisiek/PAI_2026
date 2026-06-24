@@ -3,6 +3,7 @@ package com.pai2026.backend.activity.service;
 import com.pai2026.backend.activity.api.dto.ActivitySummary;
 import com.pai2026.backend.activity.api.dto.CategoryActivity;
 import com.pai2026.backend.activity.api.dto.DailyCount;
+import com.pai2026.backend.activity.api.dto.DailyTypeCount;
 import com.pai2026.backend.activity.api.dto.EventTypeCount;
 import com.pai2026.backend.activity.api.dto.ProductActivity;
 import com.pai2026.backend.activity.persistence.ActivityEventReader;
@@ -50,6 +51,11 @@ public class ActivityAnalyticsService {
     public List<DailyCount> eventsPerDay(Instant from, Instant to) {
         Instant end = end(to);
         return reader.eventsPerDay(start(from, end), end);
+    }
+
+    public List<DailyTypeCount> eventsPerDayByType(Instant from, Instant to) {
+        Instant end = end(to);
+        return reader.eventsPerDayByType(start(from, end), end);
     }
 
     private static Instant end(Instant to) {

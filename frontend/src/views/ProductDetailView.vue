@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { computed, ref } from 'vue'
 import { useRoute } from 'vue-router'
 import MainLayout from '../layouts/MainLayout.vue'
 import BaseCard from '../components/base/BaseCard.vue'
@@ -80,13 +80,15 @@ const addToCart = (): void => {
   cartStore.openCart()
 }
 
-onMounted(loadProduct)
+await useAsyncData('product-detail', loadProduct, {
+  watch: [() => route.params.slug],
+})
 </script>
 
 <template>
   <MainLayout>
     <div class="pdp">
-      <RouterLink class="pdp__back" :to="{ name: 'offers' }">← Wróć do ofert</RouterLink>
+      <NuxtLink class="pdp__back" to="/">← Wróć do ofert</NuxtLink>
 
       <SkeletonLoader v-if="isLoading" />
 

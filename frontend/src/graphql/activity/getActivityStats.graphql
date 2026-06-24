@@ -18,8 +18,9 @@ query ActivityStats($from: String, $to: String) {
       categoryId
       count
     }
-    eventsPerDay(from: $from, to: $to) {
+    eventsPerDayByType(from: $from, to: $to) {
       day
+      type
       count
     }
   }
