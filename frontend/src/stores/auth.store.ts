@@ -17,10 +17,6 @@ interface PersistedAuthState {
 const AUTH_STORAGE_KEY = 'ecommerce-auth-state'
 
 const isLikelyJwt = (token: string): boolean => {
-  if (!token || token.startsWith('mock-token-')) {
-    return false
-  }
-
   const segments = token.split('.')
   return segments.length === 3 && segments.every((segment) => segment.length > 0)
 }

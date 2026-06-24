@@ -35,7 +35,7 @@ const submit = async (): Promise<void> => {
       <article class="login-card">
         <p class="login-card__eyebrow">Konto użytkownika</p>
         <h2>Logowanie</h2>
-        <p class="login-card__hint">Użyj konta demo, aby sprawdzić działanie uwierzytelniania przez mock GraphQL.</p>
+        <p class="login-card__hint">Zaloguj się, aby kontynuować.</p>
 
         <form class="login-form" @submit.prevent="submit">
           <label>

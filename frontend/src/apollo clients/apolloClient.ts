@@ -11,10 +11,6 @@ const AUTH_STORAGE_KEY = 'ecommerce-auth-state'
 const clients = new Map<string, ApolloClient>()
 
 const isLikelyJwt = (token: string): boolean => {
-  if (!token || token.startsWith('mock-token-')) {
-    return false
-  }
-
   // Basic shape check. Backend JWTs should have 3 base64url segments.
   const segments = token.split('.')
   return segments.length === 3 && segments.every((segment) => segment.length > 0)

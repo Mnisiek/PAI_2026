@@ -1,45 +1,71 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 import MainLayout from '../layouts/MainLayout.vue'
+import SearchBar from '../components/catalog/SearchBar.vue'
 import { useCurrency } from '../composables/useCurrency'
 import { catalogService } from '../services/catalog.service'
+import { useCatalogStore } from '../stores/catalog.store'
 import type { Product } from '../types/catalog'
 
 const { formatPrice } = useCurrency()
+const catalogStore = useCatalogStore()
+const searchQuery = ref(catalogStore.searchQuery)
+const isNavigatingToOffers = ref(false)
 
-const homeProducts = ref<Product[]>([])
-const isLoading = ref(true)
-const error = ref<string | null>(null)
+const {
+  data: homeProducts,
+  error,
+} = await useAsyncData<Product[]>(
+  'home-products',
+  () => catalogService.getProducts({ search: '', categoryId: null }),
+  {
+    default: () => [],
+  },
+)
 
-const featuredProducts = computed(() => homeProducts.value.slice(0, 4))
+const homeProductsList = computed(() => homeProducts.value ?? [])
+
+const featuredProducts = computed(() => homeProductsList.value.slice(0, 4))
 
 const promoProducts = computed(() => {
-  return [...homeProducts.value]
+  return [...homeProductsList.value]
     .sort((first, second) => first.priceFrom.amount - second.priceFrom.amount)
     .slice(0, 3)
 })
 
-const newArrivalProducts = computed(() => homeProducts.value.slice(0, 6))
-const hasHomeProducts = computed(() => homeProducts.value.length > 0)
+const newArrivalProducts = computed(() => homeProductsList.value.slice(0, 6))
+const hasHomeProducts = computed(() => homeProductsList.value.length > 0)
+const errorMessage = computed(() => {
+  if (!error.value || hasHomeProducts.value) {
+    return null
+  }
 
-await useAsyncData('home-products', async () => {
-  isLoading.value = true
-  error.value = null
+  if (error.value instanceof Error && error.value.message) {
+    return error.value.message
+  }
+
+  return 'Nie udało się pobrać ofert.'
+})
+
+const applySearch = async (): Promise<void> => {
+  isNavigatingToOffers.value = true
 
   try {
-    homeProducts.value = await catalogService.getProducts({ search: '', categoryId: null })
-    return true
-  } catch (caught) {
-    error.value = caught instanceof Error ? caught.message : 'Nie udało się pobrać ofert.'
-    return false
+    await catalogStore.setCategory(null)
+    await catalogStore.setSearchQuery(searchQuery.value)
+    await navigateTo('/offers')
   } finally {
-    isLoading.value = false
+    isNavigatingToOffers.value = false
   }
-})
+}
 </script>
 
 <template>
   <MainLayout>
+    <template #search>
+      <SearchBar v-model="searchQuery" :loading="isNavigatingToOffers" @search="applySearch" />
+    </template>
+
     <section class="home-hero">
       <p class="home-hero__eyebrow">Strona główna</p>
       <h2 class="home-hero__title">Polecane, promocje i nowości</h2>
@@ -50,7 +76,7 @@ await useAsyncData('home-products', async () => {
       <NuxtLink class="home-hero__cta" to="/offers">Przejdź do ofert</NuxtLink>
     </section>
 
-    <p v-if="error && !hasHomeProducts" class="home-error" role="alert">{{ error }}</p>
+    <p v-if="errorMessage" class="home-error" role="alert">{{ errorMessage }}</p>
 
     <section v-if="hasHomeProducts" class="showcase" aria-label="Polecane i promocje">
       <div class="showcase__rows">
@@ -73,33 +99,6 @@ await useAsyncData('home-products', async () => {
                 loading="lazy"
               />
               <div class="collection-card__content">
-                <p class="collection-card__name">{{ product.name }}</p>
-                <p class="collection-card__price">od {{ formatPrice(product.priceFrom.amount) }}</p>
-              </div>
-            </NuxtLink>
-          </div>
-        </section>
-
-        <section class="collection">
-          <header class="collection__head">
-            <h3>Promocje</h3>
-            <p>Najlepsze ceny</p>
-          </header>
-          <div class="collection__grid collection__grid--three">
-            <NuxtLink
-              v-for="product in promoProducts"
-              :key="`promo-${product.id}`"
-              :to="`/product/${product.slug}`"
-              class="collection-card collection-card--promo"
-            >
-              <img
-                :src="product.mainImageUrl"
-                :alt="product.name"
-                class="collection-card__image"
-                loading="lazy"
-              />
-              <div class="collection-card__content">
-                <p class="collection-card__badge">Okazja</p>
                 <p class="collection-card__name">{{ product.name }}</p>
                 <p class="collection-card__price">od {{ formatPrice(product.priceFrom.amount) }}</p>
               </div>
