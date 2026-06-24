@@ -11,6 +11,7 @@ const { formatPrice } = useCurrency()
 const catalogStore = useCatalogStore()
 const searchQuery = ref(catalogStore.searchQuery)
 const isNavigatingToOffers = ref(false)
+const navigatingCategoryId = ref<string | null>(null)
 
 const {
   data: homeProducts,
@@ -21,6 +22,18 @@ const {
   {
     default: () => [],
   },
+)
+
+const {
+  data: allCategories,
+} = await useAsyncData<import('../types/catalog').Category[]>(
+  'home-categories',
+  () => catalogService.getCategories(),
+  { default: () => [] },
+)
+
+const rootCategories = computed(() =>
+  (allCategories.value ?? []).filter((c) => c.parentId === null),
 )
 
 const homeProductsList = computed(() => homeProducts.value ?? [])
@@ -35,6 +48,23 @@ const promoProducts = computed(() => {
 
 const newArrivalProducts = computed(() => homeProductsList.value.slice(0, 6))
 const hasHomeProducts = computed(() => homeProductsList.value.length > 0)
+
+// Symulowane źródła danych dla sekcji "Wybrane dla ciebie".
+// getRetargetedOffers: produkty z najwyższą ceną (retargeting).
+// getOptimizedOffers: co trzeci produkt z listy (symulacja rekomendacji ML).
+const retargetedOffers = computed<Product[]>(() =>
+  [...homeProductsList.value]
+    .sort((a, b) => b.priceFrom.amount - a.priceFrom.amount)
+    .slice(0, 4),
+)
+
+const optimizedOffers = computed<Product[]>(() =>
+  homeProductsList.value.filter((_, i) => i % 3 === 1).slice(0, 4),
+)
+
+const hasPersonalized = computed(
+  () => retargetedOffers.value.length > 0 || optimizedOffers.value.length > 0,
+)
 const errorMessage = computed(() => {
   if (!error.value || hasHomeProducts.value) {
     return null
@@ -58,6 +88,18 @@ const applySearch = async (): Promise<void> => {
     isNavigatingToOffers.value = false
   }
 }
+
+const goToCategory = async (categoryId: string): Promise<void> => {
+  navigatingCategoryId.value = categoryId
+
+  try {
+    catalogStore.searchQuery = ''
+    await catalogStore.setCategory(categoryId)
+    await navigateTo('/offers')
+  } finally {
+    navigatingCategoryId.value = null
+  }
+}
 </script>
 
 <template>
@@ -66,14 +108,25 @@ const applySearch = async (): Promise<void> => {
       <SearchBar v-model="searchQuery" :loading="isNavigatingToOffers" @search="applySearch" />
     </template>
 
-    <section class="home-hero">
-      <p class="home-hero__eyebrow">Strona główna</p>
-      <h2 class="home-hero__title">Polecane, promocje i nowości</h2>
-      <p class="home-hero__description">
-        Odkrywaj inspiracje zakupowe i najlepsze okazje. Pełny katalog z filtrowaniem znajdziesz na
-        dedykowanej stronie ofert.
-      </p>
-      <NuxtLink class="home-hero__cta" to="/offers">Przejdź do ofert</NuxtLink>
+    <section class="home-categories">
+      <header class="home-categories__head">
+        <p class="home-categories__eyebrow">Strona główna</p>
+        <h2 class="home-categories__title">Kategorie</h2>
+      </header>
+      <div class="home-categories__grid">
+        <button
+          v-for="category in rootCategories"
+          :key="category.id"
+          type="button"
+          class="home-category-card"
+          :class="{ 'home-category-card--loading': navigatingCategoryId === category.id }"
+          :disabled="navigatingCategoryId !== null"
+          @click="goToCategory(category.id)"
+        >
+          <span class="home-category-card__name">{{ category.name }}</span>
+          <span class="home-category-card__arrow">▶</span>
+        </button>
+      </div>
     </section>
 
     <p v-if="errorMessage" class="home-error" role="alert">{{ errorMessage }}</p>
@@ -108,19 +161,31 @@ const applySearch = async (): Promise<void> => {
 
         <section class="collection">
           <header class="collection__head">
-            <h3>Nowości</h3>
-            <p>Świeżo dodane produkty</p>
+            <h3>Wybrane dla ciebie</h3>
+            <p>Spersonalizowane propozycje</p>
           </header>
-          <div class="collection__ticker">
-            <NuxtLink
-              v-for="product in newArrivalProducts"
-              :key="`new-${product.id}`"
-              :to="`/product/${product.slug}`"
-              class="collection__ticker-item"
-            >
-              {{ product.name }}
-            </NuxtLink>
-          </div>
+          <template v-if="hasPersonalized">
+            <div class="collection__grid collection__grid--four">
+              <NuxtLink
+                v-for="product in retargetedOffers"
+                :key="`retargeted-${product.id}`"
+                :to="`/product/${product.slug}`"
+                class="collection-card"
+              >
+                <img
+                  :src="product.mainImageUrl"
+                  :alt="product.name"
+                  class="collection-card__image"
+                  loading="lazy"
+                />
+                <div class="collection-card__content">
+                  <p class="collection-card__name">{{ product.name }}</p>
+                  <p class="collection-card__price">od {{ formatPrice(product.priceFrom.amount) }}</p>
+                </div>
+              </NuxtLink>
+            </div>
+          </template>
+          <p v-else class="collection__empty">Brak propozycji w tej chwili.</p>
         </section>
       </div>
     </section>
@@ -128,7 +193,7 @@ const applySearch = async (): Promise<void> => {
 </template>
 
 <style scoped>
-.home-hero {
+.home-categories {
   border: 1px solid var(--color-border-soft);
   border-radius: 24px;
   background:
@@ -138,7 +203,11 @@ const applySearch = async (): Promise<void> => {
   padding: 1rem;
 }
 
-.home-hero__eyebrow {
+.home-categories__head {
+  margin-bottom: 0.8rem;
+}
+
+.home-categories__eyebrow {
   margin: 0;
   font-size: 0.74rem;
   letter-spacing: 0.08em;
@@ -146,27 +215,67 @@ const applySearch = async (): Promise<void> => {
   color: var(--color-text-muted);
 }
 
-.home-hero__title {
-  margin: 0.4rem 0 0;
-  font-size: clamp(1.3rem, 3vw, 1.8rem);
+.home-categories__title {
+  margin: 0.3rem 0 0;
+  font-size: clamp(1.1rem, 2.5vw, 1.5rem);
   color: var(--color-text-primary);
 }
 
-.home-hero__description {
-  margin: 0.5rem 0 0;
-  color: var(--color-text-secondary);
+.home-categories__grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.55rem;
 }
 
-.home-hero__cta {
-  margin-top: 0.8rem;
-  display: inline-flex;
-  text-decoration: none;
-  border: none;
-  border-radius: 12px;
-  background: var(--color-brand-strong);
-  color: #fff;
-  padding: 0.6rem 1.1rem;
-  font-size: 0.9rem;
+.home-category-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  border: 1px solid var(--color-border-soft);
+  border-radius: 14px;
+  background: #fff;
+  padding: 0.7rem 0.9rem;
+  cursor: pointer;
+  text-align: left;
+  transition: border-color 0.15s, opacity 0.15s;
+}
+
+.home-category-card:hover:not(:disabled) {
+  border-color: rgba(15, 118, 110, 0.4);
+}
+
+.home-category-card:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.home-category-card--loading {
+  opacity: 0.5;
+}
+
+.home-category-card__name {
+  font-size: 0.88rem;
+  color: var(--color-text-primary);
+  font-weight: 500;
+}
+
+.home-category-card__arrow {
+  font-size: 0.85rem;
+  color: var(--color-text-muted);
+  flex-shrink: 0;
+}
+
+@media (min-width: 600px) {
+  .home-categories__grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 1050px) {
+  .home-categories__grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
 }
 
 .home-error {
@@ -269,6 +378,28 @@ const applySearch = async (): Promise<void> => {
   padding: 0.13rem 0.45rem;
   background: rgba(251, 191, 36, 0.22);
   color: #92400e;
+}
+
+.collection__subsection {
+  margin-top: 0.7rem;
+}
+
+.collection__subsection:first-child {
+  margin-top: 0;
+}
+
+.collection__sublabel {
+  margin: 0 0 0.45rem;
+  font-size: 0.78rem;
+  color: var(--color-text-muted);
+  font-weight: 500;
+  letter-spacing: 0.03em;
+}
+
+.collection__empty {
+  margin: 0.3rem 0 0;
+  font-size: 0.84rem;
+  color: var(--color-text-muted);
 }
 
 .collection__ticker {

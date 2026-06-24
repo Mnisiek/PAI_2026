@@ -24,18 +24,16 @@ const openCart = (): void => {
 
 <template>
   <header class="top-nav">
-    <div class="top-nav__brand-wrap">
+    <NuxtLink class="top-nav__brand-wrap" to="/">
       <p class="top-nav__badge">E-commerce</p>
       <h1 class="top-nav__brand">Oferty i kategorie</h1>
-    </div>
+    </NuxtLink>
 
     <div v-if="hasSearchSlot" class="top-nav__search-wrap">
       <slot name="search" />
     </div>
 
     <div class="top-nav__actions">
-      <NuxtLink class="top-nav__account-link" to="/offers">Oferty</NuxtLink>
-
       <NuxtLink class="top-nav__account-link" to="/admin">Panel</NuxtLink>
 
       <NuxtLink class="top-nav__account-link" :to="authStore.isAuthenticated ? '/' : '/login'">
