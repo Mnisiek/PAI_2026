@@ -1,10 +1,14 @@
 <script setup lang="ts">
 import { computed } from 'vue'
+import { useRouter } from 'vue-router'
 import { useCurrency } from '../../composables/useCurrency'
+import { useAuthStore } from '../../stores/auth.store'
 import { useCartStore } from '../../stores/cart.store'
 
 const cartStore = useCartStore()
+const authStore = useAuthStore()
 const { formatPrice } = useCurrency()
+const router = useRouter()
 
 const isEmpty = computed(() => cartStore.items.length === 0)
 
@@ -18,6 +22,20 @@ const decreaseQuantity = (productId: string): void => {
 
 const increaseQuantity = (productId: string): void => {
   cartStore.updateQuantity(productId, 1)
+}
+
+const proceedToCheckout = async (): Promise<void> => {
+  if (isEmpty.value) {
+    return
+  }
+
+  cartStore.closeCart()
+  await router.push('/checkout')
+}
+
+const goToLogin = async (): Promise<void> => {
+  cartStore.closeCart()
+  await router.push('/login')
 }
 </script>
 
@@ -51,13 +69,24 @@ const increaseQuantity = (productId: string): void => {
 
         <footer class="cart-footer">
           <p>Razem: <strong>{{ formatPrice(cartStore.totalPrice) }}</strong></p>
+
           <button
+            v-if="authStore.isAuthenticated"
             type="button"
             class="cart-footer__checkout"
             :disabled="isEmpty"
-            @click="cartStore.checkout"
+            @click="proceedToCheckout"
           >
-            Mock checkout
+            Dostawa i płatność
+          </button>
+
+          <button
+            v-else
+            type="button"
+            class="cart-footer__checkout"
+            @click="goToLogin"
+          >
+            Zaloguj się aby sfinalizować zakup
           </button>
         </footer>
       </aside>

@@ -1,5 +1,6 @@
 import { defineStore } from 'pinia'
 import { authService } from '../services/auth.service'
+import { useCartStore } from './cart.store'
 import type { User } from '../types/auth'
 
 interface AuthState {
@@ -53,7 +54,7 @@ const persistAuthState = (state: PersistedAuthState): void => {
   window.localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(state))
 }
 
-const defaultErrorMessage = 'Nie udało się zalogować. Spróbuj ponownie.'
+const defaultErrorMessage = 'Nie udało się wykonać operacji autoryzacji. Spróbuj ponownie.'
 
 const errorToMessage = (error: unknown): string => {
   if (error instanceof Error && error.message) {
@@ -84,6 +85,7 @@ export const useAuthStore = defineStore('auth', {
     },
 
     async login(email: string, password: string): Promise<boolean> {
+      const previousUserId = this.user?.id ?? null
       this.error = null
       this.isLoading = true
 
@@ -98,12 +100,53 @@ export const useAuthStore = defineStore('auth', {
           token: this.token,
         })
 
+        const cartStore = useCartStore()
+        cartStore.syncCartForAuthTransition(previousUserId, this.user?.id ?? null)
+
         return true
       } catch (error) {
         this.error = errorToMessage(error)
         this.user = null
         this.token = null
         persistAuthState({ user: null, token: null })
+
+        const cartStore = useCartStore()
+        cartStore.syncCartForAuthTransition(previousUserId, null)
+
+        return false
+      } finally {
+        this.isLoading = false
+      }
+    },
+
+    async register(email: string, password: string): Promise<boolean> {
+      const previousUserId = this.user?.id ?? null
+      this.error = null
+      this.isLoading = true
+
+      try {
+        const payload = await authService.register({ email, password })
+
+        this.user = payload.user
+        this.token = payload.token
+
+        persistAuthState({
+          user: this.user,
+          token: this.token,
+        })
+
+        const cartStore = useCartStore()
+        cartStore.syncCartForAuthTransition(previousUserId, this.user?.id ?? null)
+
+        return true
+      } catch (error) {
+        this.error = errorToMessage(error)
+        this.user = null
+        this.token = null
+        persistAuthState({ user: null, token: null })
+
+        const cartStore = useCartStore()
+        cartStore.syncCartForAuthTransition(previousUserId, null)
 
         return false
       } finally {
@@ -112,10 +155,14 @@ export const useAuthStore = defineStore('auth', {
     },
 
     logout(): void {
+      const previousUserId = this.user?.id ?? null
       this.user = null
       this.token = null
       this.error = null
       persistAuthState({ user: null, token: null })
+
+      const cartStore = useCartStore()
+      cartStore.syncCartForAuthTransition(previousUserId, null)
     },
 
     // Server-side permission check: re-resolves the user (and role) from the

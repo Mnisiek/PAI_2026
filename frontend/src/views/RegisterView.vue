@@ -9,23 +9,34 @@ import { useAuthStore } from '../stores/auth.store'
 const authStore = useAuthStore()
 const router = useRouter()
 
-const email = ref('jan@example.com')
+const email = ref('anna@example.com')
 const password = ref('demo1234')
+const confirmPassword = ref('demo1234')
 const validationError = ref<string | null>(null)
 
-const submitLabel = computed(() => (authStore.isLoading ? 'Logowanie...' : 'Zaloguj się'))
+const submitLabel = computed(() => (authStore.isLoading ? 'Tworzenie konta...' : 'Załóż konto'))
 
 const submit = async (): Promise<void> => {
   validationError.value = null
 
-  if (!email.value.trim() || !password.value.trim()) {
-    validationError.value = 'Uzupełnij email i hasło.'
+  if (!email.value.trim() || !password.value.trim() || !confirmPassword.value.trim()) {
+    validationError.value = 'Uzupełnij email, hasło i potwierdzenie hasła.'
     return
   }
 
-  const loggedIn = await authStore.login(email.value, password.value)
+  if (password.value.length < 8) {
+    validationError.value = 'Hasło musi mieć co najmniej 8 znaków.'
+    return
+  }
 
-  if (loggedIn) {
+  if (password.value !== confirmPassword.value) {
+    validationError.value = 'Hasła muszą być identyczne.'
+    return
+  }
+
+  const registered = await authStore.register(email.value, password.value)
+
+  if (registered) {
     await router.push('/')
   }
 }
@@ -33,13 +44,13 @@ const submit = async (): Promise<void> => {
 
 <template>
   <MainLayout>
-    <section class="login-shell">
-      <article class="login-card">
-        <p class="login-card__eyebrow">Konto użytkownika</p>
-        <h2>Logowanie</h2>
-        <p class="login-card__hint">Zaloguj się, aby kontynuować.</p>
+    <section class="register-shell">
+      <article class="register-card">
+        <p class="register-card__eyebrow">Nowe konto</p>
+        <h2>Rejestracja</h2>
+        <p class="register-card__hint">Utwórz konto, aby rozpocząć zakupy i śledzić zamówienia.</p>
 
-        <form class="login-form" @submit.prevent="submit">
+        <form class="register-form" @submit.prevent="submit">
           <label>
             <span>Email</span>
             <BaseInput v-model="email" type="email" autocomplete="email" placeholder="name@example.com" />
@@ -50,22 +61,32 @@ const submit = async (): Promise<void> => {
             <BaseInput
               v-model="password"
               type="password"
-              autocomplete="current-password"
-              placeholder="Wpisz hasło"
+              autocomplete="new-password"
+              placeholder="Minimum 8 znaków"
             />
           </label>
 
-          <p v-if="validationError" class="login-form__error" role="alert">{{ validationError }}</p>
-          <p v-else-if="authStore.error" class="login-form__error" role="alert">{{ authStore.error }}</p>
+          <label>
+            <span>Potwierdź hasło</span>
+            <BaseInput
+              v-model="confirmPassword"
+              type="password"
+              autocomplete="new-password"
+              placeholder="Powtórz hasło"
+            />
+          </label>
 
-          <button class="login-form__submit" type="submit" :disabled="authStore.isLoading">
+          <p v-if="validationError" class="register-form__error" role="alert">{{ validationError }}</p>
+          <p v-else-if="authStore.error" class="register-form__error" role="alert">{{ authStore.error }}</p>
+
+          <button class="register-form__submit" type="submit" :disabled="authStore.isLoading">
             {{ submitLabel }}
           </button>
         </form>
 
-        <p class="login-card__switch">
-          Nie masz konta?
-          <NuxtLink class="login-card__link" to="/register">Przejdź do rejestracji</NuxtLink>
+        <p class="register-card__switch">
+          Masz już konto?
+          <NuxtLink class="register-card__link" to="/login">Zaloguj się</NuxtLink>
         </p>
       </article>
     </section>
@@ -73,14 +94,14 @@ const submit = async (): Promise<void> => {
 </template>
 
 <style scoped>
-.login-shell {
+.register-shell {
   display: grid;
   place-items: center;
   min-height: 58vh;
 }
 
-.login-card {
-  width: min(520px, 100%);
+.register-card {
+  width: min(560px, 100%);
   border: 1px solid var(--color-border-soft);
   border-radius: 24px;
   background: rgba(255, 255, 255, 0.9);
@@ -88,7 +109,7 @@ const submit = async (): Promise<void> => {
   padding: 1.2rem;
 }
 
-.login-card__eyebrow {
+.register-card__eyebrow {
   margin: 0;
   font-size: 0.75rem;
   letter-spacing: 0.08em;
@@ -96,38 +117,38 @@ const submit = async (): Promise<void> => {
   color: var(--color-text-muted);
 }
 
-.login-card h2 {
+.register-card h2 {
   margin: 0.4rem 0 0;
   font-size: 1.5rem;
 }
 
-.login-card__hint {
+.register-card__hint {
   margin: 0.65rem 0 0;
   color: var(--color-text-secondary);
 }
 
-.login-form {
+.register-form {
   margin-top: 1.1rem;
   display: grid;
   gap: 0.85rem;
 }
 
-.login-form label {
+.register-form label {
   display: grid;
   gap: 0.35rem;
 }
 
-.login-form label span {
+.register-form label span {
   font-size: 0.84rem;
   color: var(--color-text-secondary);
 }
 
-.login-form :deep(input) {
+.register-form :deep(input) {
   border-radius: 12px;
   padding-inline-start: 0.92rem;
 }
 
-.login-form__error {
+.register-form__error {
   margin: 0;
   border: 1px solid rgba(220, 38, 38, 0.25);
   border-radius: 12px;
@@ -137,7 +158,7 @@ const submit = async (): Promise<void> => {
   font-size: 0.9rem;
 }
 
-.login-form__submit {
+.register-form__submit {
   border: none;
   border-radius: 12px;
   background: var(--color-brand-strong);
@@ -147,18 +168,18 @@ const submit = async (): Promise<void> => {
   cursor: pointer;
 }
 
-.login-form__submit:disabled {
+.register-form__submit:disabled {
   cursor: wait;
   opacity: 0.75;
 }
 
-.login-card__switch {
+.register-card__switch {
   margin: 1rem 0 0;
   color: var(--color-text-secondary);
   font-size: 0.92rem;
 }
 
-.login-card__link {
+.register-card__link {
   color: var(--color-brand-strong);
   font-weight: 600;
 }

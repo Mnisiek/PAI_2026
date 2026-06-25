@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
 import MainLayout from '../layouts/MainLayout.vue'
-import SearchBar from '../components/catalog/SearchBar.vue'
+import SearchBar from '../components/navigation/SearchBar.vue'
 import CategoryNavBar from '../components/catalog/CategoryNavBar.vue'
 import CategoryBreadcrumbs from '../components/catalog/CategoryBreadcrumbs.vue'
 import CategoryPills from '../components/catalog/CategoryPills.vue'

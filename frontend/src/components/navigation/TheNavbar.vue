@@ -1,13 +1,20 @@
 <script setup lang="ts">
-import { computed, useSlots } from 'vue'
+import { computed, onBeforeUnmount, ref, useSlots } from 'vue'
+import { useRoute } from 'vue-router'
 import { useAuthStore } from '../../stores/auth.store'
 import { useCartStore } from '../../stores/cart.store'
 
 const slots = useSlots()
+const route = useRoute()
 const authStore = useAuthStore()
 const cartStore = useCartStore()
+const guestMenuOpen = ref(false)
+let closeTimer: ReturnType<typeof setTimeout> | null = null
 
 const hasSearchSlot = computed(() => Boolean(slots.search))
+const isAuthPage = computed(() =>
+  route.path === '/login' || route.path === '/register' || route.path === '/checkout',
+)
 
 const accountLabel = computed(() => {
   if (!authStore.user) {
@@ -20,6 +27,45 @@ const accountLabel = computed(() => {
 const openCart = (): void => {
   cartStore.openCart()
 }
+
+const cancelClose = (): void => {
+  if (closeTimer) {
+    clearTimeout(closeTimer)
+    closeTimer = null
+  }
+}
+
+const openGuestMenu = (): void => {
+  cancelClose()
+  guestMenuOpen.value = true
+}
+
+const closeGuestMenu = (): void => {
+  cancelClose()
+  closeTimer = setTimeout(() => {
+    guestMenuOpen.value = false
+    closeTimer = null
+  }, 160)
+}
+
+const toggleGuestMenu = (): void => {
+  guestMenuOpen.value = !guestMenuOpen.value
+}
+
+const onGuestMenuFocusOut = (event: FocusEvent): void => {
+  const nextTarget = event.relatedTarget
+
+  if (nextTarget instanceof Node && event.currentTarget instanceof Node && event.currentTarget.contains(nextTarget)) {
+    return
+  }
+
+  cancelClose()
+  guestMenuOpen.value = false
+}
+
+onBeforeUnmount(() => {
+  cancelClose()
+})
 </script>
 
 <template>
@@ -42,11 +88,11 @@ const openCart = (): void => {
       <span class="top-nav__logo-word">ofero</span>
     </NuxtLink>
 
-    <div v-if="hasSearchSlot" class="top-nav__search-wrap">
+    <div v-if="!isAuthPage && hasSearchSlot" class="top-nav__search-wrap">
       <slot name="search" />
     </div>
 
-    <div class="top-nav__actions">
+    <div v-if="!isAuthPage" class="top-nav__actions">
       <NuxtLink
         v-if="authStore.isAdmin"
         class="top-nav__account-link top-nav__link--wide"
@@ -54,7 +100,47 @@ const openCart = (): void => {
         >Panel administracyjny</NuxtLink
       >
 
-      <NuxtLink class="top-nav__account-link" :to="authStore.isAuthenticated ? '/' : '/login'">
+      <div
+        v-if="!authStore.isAuthenticated"
+        class="top-nav__account-menu"
+        :class="{ 'top-nav__account-menu--open': guestMenuOpen }"
+        @mouseenter="openGuestMenu"
+        @mouseleave="closeGuestMenu"
+        @focusout="onGuestMenuFocusOut"
+      >
+        <button
+          type="button"
+          class="top-nav__account-link top-nav__account-trigger"
+          aria-haspopup="true"
+          :aria-expanded="guestMenuOpen"
+          @focus="openGuestMenu"
+          @click="toggleGuestMenu"
+          @keydown.esc="closeGuestMenu"
+        >
+          Zaloguj się
+        </button>
+
+        <div v-if="guestMenuOpen" class="top-nav__account-popover">
+          <NuxtLink class="top-nav__account-cta top-nav__account-cta--primary" to="/login" @click="closeGuestMenu">
+            Zaloguj się
+          </NuxtLink>
+
+          
+          <div class="top-nav__account-separator" aria-hidden="true">
+            <span>Nie masz konta?</span>
+          </div>
+
+          <NuxtLink
+            class="top-nav__account-cta top-nav__account-cta--secondary"
+            to="/register"
+            @click="closeGuestMenu"
+          >
+            Załóż konto
+          </NuxtLink>
+        </div>
+      </div>
+
+      <NuxtLink v-else class="top-nav__account-link" to="/">
         {{ accountLabel }}
       </NuxtLink>
 
@@ -94,6 +180,10 @@ const openCart = (): void => {
   gap: 0.5rem;
 }
 
+.top-nav__account-menu {
+  position: relative;
+}
+
 .top-nav__account-link,
 .top-nav__logout {
   border: 1px solid var(--color-border-soft);
@@ -102,6 +192,100 @@ const openCart = (): void => {
   color: var(--color-text-secondary);
   padding: 0.46rem 0.85rem;
   font-size: 0.84rem;
+}
+
+.top-nav__account-trigger {
+  cursor: pointer;
+}
+
+.top-nav__account-menu--open .top-nav__account-trigger {
+  border-color: rgba(20, 184, 166, 0.26);
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.96), rgba(236, 253, 245, 0.88));
+  color: var(--color-text-primary);
+  box-shadow: 0 14px 26px -24px rgba(15, 23, 42, 0.75);
+}
+
+.top-nav__account-popover {
+  position: absolute;
+  top: calc(100% + 0.7rem);
+  right: 0;
+  z-index: 20;
+  min-width: 250px;
+  border: 1px solid rgba(20, 184, 166, 0.16);
+  border-radius: 20px;
+  background:
+    radial-gradient(circle at top right, rgba(20, 184, 166, 0.12), transparent 34%),
+    linear-gradient(145deg, rgba(255, 255, 255, 0.97), rgba(240, 253, 250, 0.93));
+  box-shadow: 0 28px 44px -30px rgba(15, 23, 42, 0.42);
+  backdrop-filter: blur(14px);
+  padding: 0.9rem;
+}
+
+.top-nav__account-popover::before {
+  content: '';
+  position: absolute;
+  top: -7px;
+  right: 28px;
+  width: 14px;
+  height: 14px;
+  background: rgba(248, 252, 251, 0.96);
+  border-top: 1px solid rgba(20, 184, 166, 0.16);
+  border-left: 1px solid rgba(20, 184, 166, 0.16);
+  transform: rotate(45deg);
+}
+
+.top-nav__account-cta {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid transparent;
+  border-radius: 14px;
+  padding: 0.8rem 1rem;
+  text-decoration: none;
+  font-size: 0.96rem;
+  transition: transform 0.18s ease, background-color 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease;
+}
+
+.top-nav__account-cta:hover {
+  transform: translateY(-1px);
+}
+
+.top-nav__account-cta--primary {
+  /*background: linear-gradient(135deg, var(--color-brand-strong), var(--color-brand-soft));*/
+  background: var(--color-brand-strong);
+  color: #fff;
+  font-weight: 600;
+  box-shadow: 0 18px 28px -22px rgba(15, 118, 110, 0.7);
+  border-radius: 999px;
+}
+
+.top-nav__account-cta--secondary {
+  border-color: rgba(148, 163, 184, 0.22);
+  background: rgba(255, 255, 255, 0.82);
+  color: var(--color-text-secondary);
+  border-radius: 999px;
+}
+
+.top-nav__account-cta--secondary:hover {
+  border-color: rgba(20, 184, 166, 0.22);
+  background: rgba(240, 253, 250, 0.96);
+}
+
+.top-nav__account-separator {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+  margin: 0.95rem 0;
+  color: var(--color-text-muted);
+  font-size: 0.9rem;
+}
+
+.top-nav__account-separator::before,
+.top-nav__account-separator::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: rgba(148, 163, 184, 0.26);
 }
 
 .top-nav__logout {
@@ -173,6 +357,17 @@ const openCart = (): void => {
   .top-nav__actions {
     width: 100%;
     justify-content: space-between;
+  }
+
+  .top-nav__account-popover {
+    right: auto;
+    left: 0;
+    min-width: min(280px, calc(100vw - 2rem));
+  }
+
+  .top-nav__account-popover::before {
+    left: 28px;
+    right: auto;
   }
 }
 

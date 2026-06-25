@@ -62,7 +62,7 @@ const submitSearch = (): void => {
   flex: 0 0 auto;
   align-self: stretch;
   border: none;
-  border-radius: 12px;
+  border-radius: 999px;
   background: var(--color-brand-strong);
   color: #fff;
   padding: 0 1.2rem;

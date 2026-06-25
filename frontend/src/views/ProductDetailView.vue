@@ -2,17 +2,22 @@
 import { computed, ref } from 'vue'
 
 import MainLayout from '../layouts/MainLayout.vue'
+import SearchBar from '../components/navigation/SearchBar.vue'
 import BaseCard from '../components/base/BaseCard.vue'
 import SkeletonLoader from '../components/base/SkeletonLoader.vue'
 import { catalogService } from '../services/catalog.service'
 import { activityService } from '../services/activity.service'
 import { useCartStore } from '../stores/cart.store'
+import { useCatalogStore } from '../stores/catalog.store'
 import { useCurrency } from '../composables/useCurrency'
 import type { AttributeValue, Offer, Product } from '../types/catalog'
 
 const cartStore = useCartStore()
+const catalogStore = useCatalogStore()
 const { formatPrice } = useCurrency()
 const route = useRoute()
+const searchQuery = ref(catalogStore.searchQuery)
+const isNavigatingToOffers = ref(false)
 
 const product = ref<Product | null>(null)
 const selectedOffer = ref<Offer | null>(null)
@@ -40,6 +45,16 @@ const offerLabel = (offer: Offer): string => {
     .map(attributeText)
     .filter(Boolean)
   return parts.length ? parts.join(' / ') : offer.sku
+}
+
+const getOfferAttributeValue = (offer: Offer, axisCode: string): string | null => {
+  const attribute = offer.attributes?.find((entry) => entry.code === axisCode)
+  if (!attribute) {
+    return null
+  }
+
+  const value = attributeText(attribute)
+  return value || null
 }
 
 type VariantAxis = {
@@ -102,6 +117,46 @@ const applyOfferAttributesSelection = (offer: Offer | null): void => {
   selectedAttributeValues.value = nextSelection
 }
 
+const findBestOfferMatch = (
+  selection: Record<string, string>,
+  prioritizedAxisCode: string,
+): Offer | null => {
+  const offers = product.value?.offers ?? []
+  const prioritizedValue = selection[prioritizedAxisCode]
+
+  let bestOffer: Offer | null = null
+  let bestScore = -1
+
+  for (const offer of offers) {
+    if (prioritizedValue && getOfferAttributeValue(offer, prioritizedAxisCode) !== prioritizedValue) {
+      continue
+    }
+
+    let score = 0
+
+    for (const axis of variantAxes.value) {
+      const wanted = selection[axis.code]
+      if (!wanted) {
+        continue
+      }
+
+      if (getOfferAttributeValue(offer, axis.code) === wanted) {
+        score += axis.code === prioritizedAxisCode ? 10 : 1
+      }
+    }
+
+    const isBetterStockCandidate =
+      score === bestScore && !!bestOffer && offer.stock > 0 && bestOffer.stock === 0
+
+    if (score > bestScore || isBetterStockCandidate) {
+      bestOffer = offer
+      bestScore = score
+    }
+  }
+
+  return bestOffer
+}
+
 const selectByAttributes = (axisCode: string, value: string): void => {
   const currentSelection = {
     ...selectedAttributeValues.value,
@@ -110,25 +165,14 @@ const selectByAttributes = (axisCode: string, value: string): void => {
 
   selectedAttributeValues.value = currentSelection
 
-  const offers = product.value?.offers ?? []
-  const strictMatch = offers.find((offer) => {
-    return variantAxes.value.every((axis) => {
-      const wanted = currentSelection[axis.code]
-      if (!wanted) {
-        return true
-      }
-
-      const actual = offer.attributes?.find((attr) => attr.code === axis.code)
-      return actual ? attributeText(actual) === wanted : false
-    })
-  })
-
-  if (strictMatch) {
-    selectedOffer.value = strictMatch
-    applyOfferAttributesSelection(strictMatch)
+  const bestMatch = findBestOfferMatch(currentSelection, axisCode)
+  if (bestMatch) {
+    selectedOffer.value = bestMatch
+    applyOfferAttributesSelection(bestMatch)
     return
   }
 
+  const offers = product.value?.offers ?? []
   const fallback = offers.find((offer) => offer.stock > 0) ?? offers[0] ?? null
   selectedOffer.value = fallback
   applyOfferAttributesSelection(fallback)
@@ -195,6 +239,18 @@ const addToCart = (): void => {
   cartStore.openCart()
 }
 
+const applySearch = async (): Promise<void> => {
+  isNavigatingToOffers.value = true
+
+  try {
+    await catalogStore.setCategory(null)
+    await catalogStore.setSearchQuery(searchQuery.value)
+    await navigateTo('/offers')
+  } finally {
+    isNavigatingToOffers.value = false
+  }
+}
+
 useAsyncData('product-detail', loadProduct, {
   watch: [() => route.params.slug],
 })
@@ -202,6 +258,10 @@ useAsyncData('product-detail', loadProduct, {
 
 <template>
   <MainLayout>
+    <template #search>
+      <SearchBar v-model="searchQuery" :loading="isNavigatingToOffers" @search="applySearch" />
+    </template>
+
     <div class="pdp">
       <NuxtLink class="pdp__back" to="/offers">← Wróć do ofert</NuxtLink>
 

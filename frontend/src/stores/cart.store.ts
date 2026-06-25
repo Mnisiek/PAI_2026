@@ -22,17 +22,40 @@ const variantLabel = (offer: Offer): string =>
 interface CartState {
   items: CartItem[]
   isOpen: boolean
+  activeCartKey: string
 }
 
-const CART_STORAGE_KEY = 'ecommerce-cart-state'
+const LEGACY_CART_STORAGE_KEY = 'ecommerce-cart-state'
+const CART_GUEST_STORAGE_KEY = 'ecommerce-cart-state:guest'
+const CART_USER_STORAGE_PREFIX = 'ecommerce-cart-state:user:'
 
-const readCartFromStorage = (): CartItem[] => {
+const resolveCartStorageKey = (userId: string | null): string =>
+  userId ? `${CART_USER_STORAGE_PREFIX}${userId}` : CART_GUEST_STORAGE_KEY
+
+const migrateLegacyGuestCart = (): void => {
+  if (!import.meta.client) {
+    return
+  }
+
+  const legacy = window.localStorage.getItem(LEGACY_CART_STORAGE_KEY)
+  if (!legacy) {
+    return
+  }
+
+  if (!window.localStorage.getItem(CART_GUEST_STORAGE_KEY)) {
+    window.localStorage.setItem(CART_GUEST_STORAGE_KEY, legacy)
+  }
+
+  window.localStorage.removeItem(LEGACY_CART_STORAGE_KEY)
+}
+
+const readCartFromStorage = (storageKey: string): CartItem[] => {
   if (!import.meta.client) {
     return []
   }
 
   try {
-    const rawValue = window.localStorage.getItem(CART_STORAGE_KEY)
+    const rawValue = window.localStorage.getItem(storageKey)
 
     if (!rawValue) {
       return []
@@ -45,12 +68,12 @@ const readCartFromStorage = (): CartItem[] => {
   }
 }
 
-const persistCartState = (items: CartItem[]): void => {
+const persistCartState = (storageKey: string, items: CartItem[]): void => {
   if (!import.meta.client) {
     return
   }
 
-  window.localStorage.setItem(CART_STORAGE_KEY, JSON.stringify(items))
+  window.localStorage.setItem(storageKey, JSON.stringify(items))
 }
 
 const findItemIndex = (items: CartItem[], productId: string): number =>
@@ -60,6 +83,7 @@ export const useCartStore = defineStore('cart', {
   state: (): CartState => ({
     items: [],
     isOpen: false,
+    activeCartKey: CART_GUEST_STORAGE_KEY,
   }),
 
   getters: {
@@ -68,8 +92,45 @@ export const useCartStore = defineStore('cart', {
   },
 
   actions: {
-    hydrateFromStorage(): void {
-      this.items = readCartFromStorage()
+    hydrateFromStorage(userId: string | null = null): void {
+      migrateLegacyGuestCart()
+      this.activeCartKey = resolveCartStorageKey(userId)
+      this.items = readCartFromStorage(this.activeCartKey)
+    },
+
+    syncCartForAuthTransition(previousUserId: string | null, nextUserId: string | null): void {
+      migrateLegacyGuestCart()
+
+      const guestKey = CART_GUEST_STORAGE_KEY
+      const nextKey = resolveCartStorageKey(nextUserId)
+
+      if (previousUserId && !nextUserId) {
+        this.activeCartKey = guestKey
+        this.items = []
+        persistCartState(guestKey, this.items)
+        this.closeCart()
+        return
+      }
+
+      if (!previousUserId && nextUserId) {
+        const guestItems = readCartFromStorage(guestKey)
+        const userItems = readCartFromStorage(nextKey)
+
+        this.activeCartKey = nextKey
+
+        if (!userItems.length && guestItems.length) {
+          this.items = guestItems
+          persistCartState(nextKey, this.items)
+        } else {
+          this.items = userItems
+        }
+
+        persistCartState(guestKey, [])
+        return
+      }
+
+      this.activeCartKey = nextKey
+      this.items = readCartFromStorage(nextKey)
     },
 
     addToCart(product: Product, offer?: Offer): void {
@@ -96,13 +157,13 @@ export const useCartStore = defineStore('cart', {
         })
       }
 
-      persistCartState(this.items)
+      persistCartState(this.activeCartKey, this.items)
       activityService.trackAddToCart(product, selected)
     },
 
     removeFromCart(productId: string): void {
       this.items = this.items.filter((item) => item.id !== productId)
-      persistCartState(this.items)
+      persistCartState(this.activeCartKey, this.items)
     },
 
     updateQuantity(productId: string, amount: number): void {
@@ -120,12 +181,12 @@ export const useCartStore = defineStore('cart', {
       }
 
       this.items[itemIndex].quantity = nextQuantity
-      persistCartState(this.items)
+      persistCartState(this.activeCartKey, this.items)
     },
 
     clearCart(): void {
       this.items = []
-      persistCartState(this.items)
+      persistCartState(this.activeCartKey, this.items)
     },
 
     checkout(): void {
