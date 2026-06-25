@@ -7,7 +7,7 @@ import AdminNav from '../components/admin/AdminNav.vue'
 import { useCurrency } from '../composables/useCurrency'
 import { catalogAdminService } from '../services/catalogAdmin.service'
 import { catalogService } from '../services/catalog.service'
-import type { AdminOffer, Category, Product } from '../types/catalog'
+import type { AdminOffer, AttributeValue, Category, Product } from '../types/catalog'
 
 const { formatPrice } = useCurrency()
 
@@ -190,6 +190,7 @@ const offerAttributes = ref<OfferAttributeRow[]>([{ name: '', value: '' }])
 const offerImages = ref<{ url: string }[]>([{ url: '' }])
 const offerMessage = ref<string | null>(null)
 const offerError = ref<string | null>(null)
+const editingOfferId = ref<string | null>(null)
 
 const categoryOptions = computed(() =>
   leafCategories.value.map((category) => ({ value: category.id, label: category.name })),
@@ -224,16 +225,48 @@ const removeOfferImageRow = (index: number): void => {
   offerImages.value.splice(index, 1)
 }
 
+const resetOfferForm = (): void => {
+  offerForm.sku = ''
+  offerForm.price = 0
+  offerForm.stock = 0
+  offerAttributes.value = [{ name: '', value: '' }]
+  offerImages.value = [{ url: '' }]
+  editingOfferId.value = null
+}
+
+const attrToValue = (attribute: AttributeValue): string => {
+  if (attribute.textValue != null) return attribute.textValue
+  if (attribute.numValue != null) return String(attribute.numValue)
+  if (attribute.boolValue != null) return attribute.boolValue ? 'Tak' : 'Nie'
+  return ''
+}
+
+const startEditOffer = (product: Product, offer: AdminOffer): void => {
+  editingOfferId.value = offer.id
+  offerForm.productId = product.id
+  offerForm.sku = offer.sku
+  offerForm.price = offer.price?.amount ?? 0
+  offerForm.stock = offer.stock ?? 0
+  const attrs = (offer.attributes ?? []).map((a) => ({ name: a.name, value: attrToValue(a) }))
+  offerAttributes.value = attrs.length > 0 ? attrs : [{ name: '', value: '' }]
+  const imgs = (offer.images ?? []).map((image) => ({ url: image.url }))
+  offerImages.value = imgs.length > 0 ? imgs : [{ url: '' }]
+  offerMessage.value = null
+  offerError.value = null
+}
+
+const cancelEditOffer = (): void => {
+  resetOfferForm()
+  offerMessage.value = null
+  offerError.value = null
+}
+
 const submitOffer = async (): Promise<void> => {
   offerMessage.value = null
   offerError.value = null
 
   if (!offerForm.productId) {
     offerError.value = 'Wybierz produkt.'
-    return
-  }
-  if (!offerForm.sku.trim()) {
-    offerError.value = 'SKU jest wymagane.'
     return
   }
   if (offerForm.price <= 0) {
@@ -250,23 +283,34 @@ const submitOffer = async (): Promise<void> => {
   const cleanedImages = offerImages.value.map((row) => row.url.trim()).filter(Boolean)
 
   try {
-    await catalogAdminService.addOffer({
-      productId: offerForm.productId,
-      sku: offerForm.sku.trim(),
-      price: Number(offerForm.price),
-      stock: Number(offerForm.stock),
-      attributes: cleanedAttributes.length > 0 ? cleanedAttributes : undefined,
-      images: cleanedImages.length > 0 ? cleanedImages : undefined,
-    })
-    offerMessage.value = 'Dodano wariant.'
-    offerForm.sku = ''
-    offerForm.price = 0
-    offerForm.stock = 0
-    offerAttributes.value = [{ name: '', value: '' }]
-    offerImages.value = [{ url: '' }]
+    if (editingOfferId.value) {
+      await catalogAdminService.updateOffer({
+        id: editingOfferId.value,
+        price: Number(offerForm.price),
+        stock: Number(offerForm.stock),
+        attributes: cleanedAttributes.length > 0 ? cleanedAttributes : undefined,
+        images: cleanedImages.length > 0 ? cleanedImages : undefined,
+      })
+      offerMessage.value = 'Zaktualizowano wariant.'
+    } else {
+      if (!offerForm.sku.trim()) {
+        offerError.value = 'SKU jest wymagane.'
+        return
+      }
+      await catalogAdminService.addOffer({
+        productId: offerForm.productId,
+        sku: offerForm.sku.trim(),
+        price: Number(offerForm.price),
+        stock: Number(offerForm.stock),
+        attributes: cleanedAttributes.length > 0 ? cleanedAttributes : undefined,
+        images: cleanedImages.length > 0 ? cleanedImages : undefined,
+      })
+      offerMessage.value = 'Dodano wariant.'
+    }
+    resetOfferForm()
     await refreshList()
   } catch (caught) {
-    offerError.value = caught instanceof Error ? caught.message : 'Nie udało się dodać wariantu.'
+    offerError.value = caught instanceof Error ? caught.message : 'Nie udało się zapisać wariantu.'
   }
 }
 </script>
@@ -378,7 +422,9 @@ const submitOffer = async (): Promise<void> => {
         </BaseCard>
 
         <BaseCard class="panel">
-          <h2 class="panel__title">Dodaj wariant (ofertę)</h2>
+          <h2 class="panel__title">
+            {{ editingOfferId ? 'Edytuj wariant' : 'Dodaj wariant (ofertę)' }}
+          </h2>
           <form class="form" @submit.prevent="submitOffer">
             <div class="form__field">
               <span>Produkt *</span>
@@ -387,12 +433,13 @@ const submitOffer = async (): Promise<void> => {
                 :options="productOptions"
                 placeholder="— wybierz produkt —"
                 aria-label="Produkt"
+                :disabled="!!editingOfferId"
               />
             </div>
             <div class="form__row">
               <label class="form__field">
                 <span>SKU *</span>
-                <input v-model="offerForm.sku" type="text" />
+                <input v-model="offerForm.sku" type="text" :readonly="!!editingOfferId" />
               </label>
               <label class="form__field">
                 <span>Cena (PLN) *</span>
@@ -476,7 +523,19 @@ const submitOffer = async (): Promise<void> => {
             <p v-if="offerError" class="form__error">{{ offerError }}</p>
             <p v-if="offerMessage" class="form__ok">{{ offerMessage }}</p>
 
-            <button class="form__submit" type="submit">Dodaj wariant</button>
+            <div class="form__actions">
+              <button class="form__submit" type="submit">
+                {{ editingOfferId ? 'Zapisz zmiany' : 'Dodaj wariant' }}
+              </button>
+              <button
+                v-if="editingOfferId"
+                type="button"
+                class="form__cancel"
+                @click="cancelEditOffer"
+              >
+                Anuluj
+              </button>
+            </div>
           </form>
         </BaseCard>
       </div>
@@ -526,6 +585,9 @@ const submitOffer = async (): Promise<void> => {
                 >
                   {{ offer.status === 'ACTIVE' ? 'aktywny' : 'nieaktywny' }}
                 </span>
+                <button type="button" class="offer-list__btn" @click="startEditOffer(product, offer)">
+                  Edytuj
+                </button>
                 <button type="button" class="offer-list__btn" @click="toggleOfferStatus(offer)">
                   {{ offer.status === 'ACTIVE' ? 'Dezaktywuj' : 'Aktywuj' }}
                 </button>

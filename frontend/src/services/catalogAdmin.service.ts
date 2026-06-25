@@ -7,6 +7,7 @@ import {
   SET_OFFER_STATUS_MUTATION,
   SET_PRODUCT_STATUS_MUTATION,
   UPDATE_CATEGORY_MUTATION,
+  UPDATE_OFFER_MUTATION,
   UPDATE_PRODUCT_MUTATION,
 } from '../graphql/catalog.mutations'
 import type { AttributeValue, Category, Money, Offer, Product } from '../types/catalog'
@@ -37,6 +38,14 @@ export interface NewOfferInput {
 export interface NewOfferAttributeInput {
   name: string
   value: string
+}
+
+export interface UpdateOfferInput {
+  id: string
+  price: number
+  stock: number
+  attributes?: NewOfferAttributeInput[]
+  images?: string[]
 }
 
 export interface NewCategoryAttributeInput {
@@ -229,5 +238,19 @@ export const catalogAdminService = {
       mutation: SET_OFFER_STATUS_MUTATION,
       variables: { id, status },
     })
+  },
+
+  async updateOffer(input: UpdateOfferInput): Promise<Offer> {
+    const client = getApolloClient()
+    const { data } = await client.mutate<{ updateOffer: Offer }, { input: UpdateOfferInput }>({
+      mutation: UPDATE_OFFER_MUTATION,
+      variables: { input },
+    })
+
+    if (!data) {
+      throw new Error('Update offer mutation returned no data.')
+    }
+
+    return data.updateOffer
   },
 }

@@ -251,6 +251,28 @@ public class OffersService {
         return offerRepository.save(offer);
     }
 
+    @Transactional
+    public Offer updateOffer(UpdateOfferInput input) {
+        Long id = parseId(input.id(), "Invalid offer id.");
+        Offer offer = offerRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Offer not found."));
+
+        offer.setPrice(requirePrice(input.price()));
+        offer.setStock(normalizeStock(input.stock()));
+
+        // Replace attribute values. Flush the clear first so the
+        // (offer_id, attribute_id) unique constraint doesn't trip on re-add.
+        offer.getAttributeValues().clear();
+        entityManager.flush();
+        persistAttributePairs(offer, offer.getProduct(), toAttributePairs(input.attributes()));
+
+        // Replace images.
+        offer.getImages().clear();
+        applyOfferImages(offer, input.images());
+
+        return offerRepository.save(offer);
+    }
+
     /** Every product regardless of status — admin management view. */
     public List<Product> getAllProductsForAdmin() {
         return productRepository.findAll(Sort.by(Sort.Direction.DESC, "id"));

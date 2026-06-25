@@ -73,6 +73,12 @@ public class OffersController {
     public Offer setOfferStatus(@Argument String id, @Argument String status) {
         return offersService.setOfferStatus(id, status);
     }
+
+    @MutationMapping
+    @PreAuthorize("hasRole('ADMIN')")
+    public Offer updateOffer(@Argument UpdateOfferInput input) {
+        return offersService.updateOffer(input);
+    }
     @SchemaMapping(typeName = "OffersModuleQuery")
     public Product product(@Argument String slug) {
         return offersService.getProductBySlug(slug);

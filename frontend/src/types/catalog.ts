@@ -51,11 +51,15 @@ export interface Category {
   children?: Category[]
 }
 
-// Lightweight offer shape for admin management (status toggling).
+// Offer shape for admin management (status toggling + editing).
 export interface AdminOffer {
   id: string
   sku: string
   status: string
+  price?: Money
+  stock?: number
+  attributes?: AttributeValue[]
+  images?: OfferImage[]
 }
 
 export interface Product {

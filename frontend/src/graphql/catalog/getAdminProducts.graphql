@@ -46,6 +46,24 @@ query AdminProducts {
         id
         sku
         status
+        stock
+        price {
+          amount
+          currency
+        }
+        attributes {
+          code
+          name
+          dataType
+          unit
+          textValue
+          numValue
+          boolValue
+        }
+        images {
+          url
+          alt
+        }
       }
     }
   }

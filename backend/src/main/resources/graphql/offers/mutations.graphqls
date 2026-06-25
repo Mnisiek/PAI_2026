@@ -20,6 +20,17 @@ extend type Mutation {
 
     "Set an offer's status — ACTIVE or INACTIVE."
     setOfferStatus(id: ID!, status: OfferStatus!): Offer!
+
+    "Update an existing offer (variant): price, stock, and (replacing) attributes and images."
+    updateOffer(input: UpdateOfferInput!): Offer!
+}
+
+input UpdateOfferInput {
+    id: ID!
+    price: Float!
+    stock: Int!
+    attributes: [AddOfferAttributeInput!]
+    images: [String!]
 }
 
 input UpdateCategoryInput {
