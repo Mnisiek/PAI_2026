@@ -51,22 +51,29 @@ const submitSearch = (): void => {
 .search-shell {
   position: relative;
   display: flex;
-  align-items: center;
-  gap: 0.45rem;
+  align-items: stretch;
+  gap: 0.5rem;
+}
+
+.search-shell > :first-child {
+  flex: 1 1 auto;
+  min-width: 0;
 }
 
 .search-shell__button {
+  flex: 0 0 auto;
+  align-self: stretch;
+  aspect-ratio: 1;
+  width: auto;
   border: none;
   border-radius: 999px;
   background: var(--color-brand-strong);
   color: #fff;
-  width: 2.5rem;
-  height: 2.5rem;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  font-size: 1.05rem;
+  font-size: 1.2rem;
 }
 
 .search-shell__button:disabled {
