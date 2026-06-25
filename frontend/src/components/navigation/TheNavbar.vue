@@ -12,7 +12,9 @@ const guestMenuOpen = ref(false)
 let closeTimer: ReturnType<typeof setTimeout> | null = null
 
 const hasSearchSlot = computed(() => Boolean(slots.search))
-const isAuthPage = computed(() => route.path === '/login' || route.path === '/register')
+const isAuthPage = computed(() =>
+  route.path === '/login' || route.path === '/register' || route.path === '/checkout',
+)
 
 const accountLabel = computed(() => {
   if (!authStore.user) {
@@ -115,7 +117,7 @@ onBeforeUnmount(() => {
           @click="toggleGuestMenu"
           @keydown.esc="closeGuestMenu"
         >
-          Zaloguj
+          Zaloguj się
         </button>
 
         <div v-if="guestMenuOpen" class="top-nav__account-popover">

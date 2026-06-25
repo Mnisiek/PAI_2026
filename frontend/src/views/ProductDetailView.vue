@@ -2,17 +2,22 @@
 import { computed, ref } from 'vue'
 
 import MainLayout from '../layouts/MainLayout.vue'
+import SearchBar from '../components/navigation/SearchBar.vue'
 import BaseCard from '../components/base/BaseCard.vue'
 import SkeletonLoader from '../components/base/SkeletonLoader.vue'
 import { catalogService } from '../services/catalog.service'
 import { activityService } from '../services/activity.service'
 import { useCartStore } from '../stores/cart.store'
+import { useCatalogStore } from '../stores/catalog.store'
 import { useCurrency } from '../composables/useCurrency'
 import type { AttributeValue, Offer, Product } from '../types/catalog'
 
 const cartStore = useCartStore()
+const catalogStore = useCatalogStore()
 const { formatPrice } = useCurrency()
 const route = useRoute()
+const searchQuery = ref(catalogStore.searchQuery)
+const isNavigatingToOffers = ref(false)
 
 const product = ref<Product | null>(null)
 const selectedOffer = ref<Offer | null>(null)
@@ -214,6 +219,18 @@ const addToCart = (): void => {
   cartStore.openCart()
 }
 
+const applySearch = async (): Promise<void> => {
+  isNavigatingToOffers.value = true
+
+  try {
+    await catalogStore.setCategory(null)
+    await catalogStore.setSearchQuery(searchQuery.value)
+    await navigateTo('/offers')
+  } finally {
+    isNavigatingToOffers.value = false
+  }
+}
+
 useAsyncData('product-detail', loadProduct, {
   watch: [() => route.params.slug],
 })
@@ -221,6 +238,10 @@ useAsyncData('product-detail', loadProduct, {
 
 <template>
   <MainLayout>
+    <template #search>
+      <SearchBar v-model="searchQuery" :loading="isNavigatingToOffers" @search="applySearch" />
+    </template>
+
     <div class="pdp">
       <NuxtLink class="pdp__back" to="/offers">← Wróć do ofert</NuxtLink>
 
