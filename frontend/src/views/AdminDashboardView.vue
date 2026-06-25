@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import MainLayout from '../layouts/MainLayout.vue'
 import BaseCard from '../components/base/BaseCard.vue'
 import SkeletonLoader from '../components/base/SkeletonLoader.vue'
@@ -11,8 +11,17 @@ import type { ActivityStats } from '../types/activity'
 
 const stats = ref<ActivityStats | null>(null)
 const categoryNameById = ref(new Map<string, string>())
-const isLoading = ref(true)
-const error = ref<string | null>(null)
+const pending = ref(true)
+const isUpdating = ref(false)
+const errorMessage = ref<string | null>(null)
+
+const RANGE_OPTIONS = [
+  { days: 7, label: '7 dni' },
+  { days: 30, label: '30 dni' },
+  { days: 90, label: '90 dni' },
+] as const
+
+const rangeDays = ref(7)
 
 const EVENT_TYPE_LABELS: Record<string, string> = {
   VIEW: 'Wyświetlenia',
@@ -45,24 +54,43 @@ const dayInMs = 24 * 60 * 60 * 1000
 const computeFrom = (days: number): string => new Date(Date.now() - days * dayInMs).toISOString()
 
 const loadStats = async (): Promise<void> => {
+  errorMessage.value = null
   try {
-    const [activityStats, categories] = await Promise.all([
-      analyticsService.getActivityStats(),
-      catalogService.getCategories(),
-    ])
-
-    stats.value = activityStats
-    categoryNameById.value = new Map(categories.map((category) => [category.id, category.name]))
+    stats.value = await analyticsService.getActivityStats({ from: computeFrom(rangeDays.value) })
   } catch (caught) {
-    error.value =
+    errorMessage.value =
       caught instanceof Error ? caught.message : 'Nie udało się pobrać statystyk aktywności.'
-  } finally {
-    isLoading.value = false
   }
 }
 
-onMounted(() => {
-  void loadStats()
+// Re-fetch the selected range. The first load shows the skeleton (pending); a
+// range switch keeps the current view on screen and crossfades it (isUpdating).
+const refresh = async (): Promise<void> => {
+  if (stats.value === null) {
+    pending.value = true
+  } else {
+    isUpdating.value = true
+  }
+  try {
+    await loadStats()
+  } finally {
+    pending.value = false
+    isUpdating.value = false
+  }
+}
+
+onMounted(async () => {
+  try {
+    const categories = await catalogService.getCategories()
+    categoryNameById.value = new Map(categories.map((category) => [category.id, category.name]))
+  } catch {
+    // Category names are best-effort; fall back to "Kategoria {id}".
+  }
+  await refresh()
+})
+
+watch(rangeDays, () => {
+  void refresh()
 })
 </script>
 

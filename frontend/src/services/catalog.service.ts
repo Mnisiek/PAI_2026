@@ -1,6 +1,6 @@
 import { getApolloClient } from '../apollo clients/apolloClient'
-import { GET_CATEGORIES, GET_PRODUCT, GET_PRODUCTS } from '../graphql/catalog.queries'
-import type { CatalogFilterInput, Category, Product } from '../types/catalog'
+import { GET_CATEGORIES, GET_FACETS, GET_PRODUCT, GET_PRODUCTS } from '../graphql/catalog.queries'
+import type { CatalogFilterInput, Category, Facet, Product } from '../types/catalog'
 import { useCatalogStore } from '../stores/catalog.store'
 
 interface CategoriesResponse {
@@ -20,6 +20,57 @@ interface ProductsResponse {
 interface ProductResponse {
   offersModule: {
     product: Product | null
+  }
+}
+
+interface FacetsResponse {
+  offersModule: {
+    facets: Facet[]
+  }
+}
+
+// Mirrors the backend `ProductFilter` GraphQL input.
+interface GqlProductFilter {
+  categorySlug?: string | null
+  priceMin?: number | null
+  priceMax?: number | null
+  inStock?: boolean | null
+  attributes?: { code: string; values?: string[] | null; min?: number | null; max?: number | null }[] | null
+}
+
+// Build the GraphQL ProductFilter from the store-facing filter, dropping empty
+// parts so the query stays minimal. Returns null when nothing is constrained.
+const buildProductFilter = (
+  filter: CatalogFilterInput,
+  categorySlug: string | null,
+): GqlProductFilter | null => {
+  const attributes = (filter.attributes ?? [])
+    .map((attr) => ({
+      code: attr.code,
+      values: attr.values && attr.values.length > 0 ? attr.values : null,
+      min: attr.min ?? null,
+      max: attr.max ?? null,
+    }))
+    .filter((attr) => (attr.values && attr.values.length > 0) || attr.min != null || attr.max != null)
+
+  const productFilter: GqlProductFilter = {}
+  if (categorySlug) productFilter.categorySlug = categorySlug
+  if (filter.priceMin != null) productFilter.priceMin = filter.priceMin
+  if (filter.priceMax != null) productFilter.priceMax = filter.priceMax
+  if (filter.inStock) productFilter.inStock = true
+  if (attributes.length > 0) productFilter.attributes = attributes
+
+  return Object.keys(productFilter).length > 0 ? productFilter : null
+}
+
+const resolveCategorySlug = (categoryId?: string | null): string | null => {
+  if (!categoryId) return null
+  try {
+    const catalogStore = useCatalogStore()
+    return catalogStore.categories.find((category) => category.id === categoryId)?.slug ?? null
+  } catch {
+    // Store not ready during initial load — fall back to no category.
+    return null
   }
 }
 
@@ -84,26 +135,19 @@ export const catalogService = {
 
   async getProducts(filter: CatalogFilterInput): Promise<Product[]> {
     const client = getApolloClient()
-    let categorySlug: string | null = null
+    const categorySlug = resolveCategorySlug(filter.categoryId)
+    const productFilter = buildProductFilter(filter, categorySlug)
 
-    if (filter.categoryId) {
-      try {
-        const catalogStore = useCatalogStore()
-        const found = catalogStore.categories.find((c) => c.id === filter.categoryId)
-        if (found) {
-          categorySlug = found.slug
-        }
-      } catch (e) {
-        // Ignore store lookup error during initial loading if store is not fully initialized
-      }
-    }
-
-    const { data } = await client.query<ProductsResponse, { search?: string | null; filter?: { categorySlug?: string | null } | null }>({
+    const { data } = await client.query<
+      ProductsResponse,
+      { search?: string | null; filter?: GqlProductFilter | null }
+    >({
       query: GET_PRODUCTS,
       variables: {
         search: filter.search || null,
-        filter: categorySlug ? { categorySlug } : null,
+        filter: productFilter,
       },
+      fetchPolicy: 'no-cache',
     })
 
     if (!data) {
@@ -111,6 +155,27 @@ export const catalogService = {
     }
 
     return data.offersModule.products.items.map(normalizeProduct)
+  },
+
+  async getFacets(categorySlug: string, search?: string): Promise<Facet[]> {
+    const client = getApolloClient()
+
+    const { data } = await client.query<
+      FacetsResponse,
+      { categorySlug: string; search?: string | null; filter?: GqlProductFilter | null }
+    >({
+      query: GET_FACETS,
+      variables: {
+        categorySlug,
+        search: search || null,
+        // Facets describe the category+search context, independent of the
+        // attribute/price filters the user is currently applying.
+        filter: null,
+      },
+      fetchPolicy: 'no-cache',
+    })
+
+    return data?.offersModule.facets ?? []
   },
 
   async getProductBySlug(slug: string): Promise<Product | null> {

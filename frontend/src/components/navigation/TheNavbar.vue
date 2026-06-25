@@ -24,19 +24,19 @@ const openCart = (): void => {
 
 <template>
   <header class="top-nav">
-    <div class="top-nav__brand-wrap">
+    <NuxtLink class="top-nav__brand-wrap" to="/offers">
       <p class="top-nav__badge">E-commerce</p>
       <h1 class="top-nav__brand">Oferty i kategorie</h1>
-    </div>
+    </NuxtLink>
 
     <div v-if="hasSearchSlot" class="top-nav__search-wrap">
       <slot name="search" />
     </div>
 
     <div class="top-nav__actions">
-      <NuxtLink class="top-nav__account-link" to="/offers">Oferty</NuxtLink>
+      <NuxtLink class="top-nav__account-link top-nav__link--wide" to="/offers">Oferty</NuxtLink>
 
-      <NuxtLink class="top-nav__account-link" to="/admin">Panel</NuxtLink>
+      <NuxtLink class="top-nav__account-link top-nav__link--wide" to="/admin">Panel</NuxtLink>
 
       <NuxtLink class="top-nav__account-link" :to="authStore.isAuthenticated ? '/' : '/login'">
         {{ accountLabel }}
@@ -130,6 +130,38 @@ const openCart = (): void => {
   font-size: clamp(1.5rem, 4vw, 2rem);
   line-height: 1.1;
   color: var(--color-text-primary);
+}
+
+.top-nav__brand-wrap {
+  display: block;
+  text-decoration: none;
+}
+
+/* Declutter on phones: drop the badge and the secondary text links, keep the
+   brand (links to the catalog), search, account/login and cart. */
+@media (max-width: 767px) {
+  .top-nav {
+    padding: 0.85rem;
+    gap: 0.75rem;
+  }
+
+  .top-nav__badge {
+    display: none;
+  }
+
+  .top-nav__brand {
+    margin-top: 0;
+    font-size: 1.2rem;
+  }
+
+  .top-nav__link--wide {
+    display: none;
+  }
+
+  .top-nav__actions {
+    width: 100%;
+    justify-content: space-between;
+  }
 }
 
 @media (min-width: 900px) {

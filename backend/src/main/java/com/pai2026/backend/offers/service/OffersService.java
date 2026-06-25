@@ -28,6 +28,7 @@ public class OffersService {
     private final BrandRepository brandRepository;
     private final OfferRepository offerRepository;
     private final AttributeRepository attributeRepository;
+    private final CategoryAttributeRepository categoryAttributeRepository;
 
     @PersistenceContext
     private EntityManager entityManager;
@@ -37,12 +38,14 @@ public class OffersService {
             CategoryRepository categoryRepository,
             BrandRepository brandRepository,
             OfferRepository offerRepository,
-            AttributeRepository attributeRepository) {
+            AttributeRepository attributeRepository,
+            CategoryAttributeRepository categoryAttributeRepository) {
         this.productRepository = productRepository;
         this.categoryRepository = categoryRepository;
         this.brandRepository = brandRepository;
         this.offerRepository = offerRepository;
         this.attributeRepository = attributeRepository;
+        this.categoryAttributeRepository = categoryAttributeRepository;
     }
 
     @Transactional
@@ -64,7 +67,24 @@ public class OffersService {
         category.setSortOrder(categoryRepository.findMaxSortOrderByParentId(parentId) + 1);
         category.setSlug(uniqueSlug(name, categoryRepository::existsBySlug));
 
-        return categoryRepository.save(category);
+        Category saved = categoryRepository.save(category);
+
+        // Declared filters become filterable category_attribute rows.
+        if (input.attributes() != null) {
+            for (CategoryAttributeInput attr : input.attributes()) {
+                if (attr == null) {
+                    continue;
+                }
+                String attrName = trimToNull(attr.name());
+                if (attrName == null) {
+                    continue;
+                }
+                Attribute attribute = resolveOrCreateAttribute(attrName, attr.dataType(), attr.unit());
+                registerCategoryFilter(saved, attribute);
+            }
+        }
+
+        return saved;
     }
 
     @Transactional
@@ -102,6 +122,9 @@ public class OffersService {
         offer.setPriceCurrency("PLN");
         offer.setStock(stock);
         offer.setStatus("ACTIVE");
+
+        persistAttributePairs(offer, savedProduct, toAttributePairs(input.attributes()));
+
         offerRepository.save(offer);
 
         return savedProduct;
@@ -129,17 +152,84 @@ public class OffersService {
         offer.setStock(stock);
         offer.setStatus("ACTIVE");
 
-        List<AttributePair> attributePairs = collectAttributePairs(input);
-        for (AttributePair pair : attributePairs) {
+        persistAttributePairs(offer, product, collectAttributePairs(input));
+        applyOfferImages(offer, input.images());
+
+        return offerRepository.save(offer);
+    }
+
+    /**
+     * Attaches each attribute value to the offer (typing it by the attribute's data
+     * type) and ensures the attribute is a filterable facet on the product's category.
+     */
+    private void persistAttributePairs(Offer offer, Product product, List<AttributePair> pairs) {
+        for (AttributePair pair : pairs) {
             Attribute attribute = resolveOrCreateTextAttribute(pair.name());
             OfferAttributeValue value = new OfferAttributeValue();
             value.setOffer(offer);
             value.setAttribute(attribute);
-            value.setTextValue(pair.value());
+            assignTypedValue(value, attribute.getDataType(), pair.value());
             offer.getAttributeValues().add(value);
+
+            registerCategoryFilter(product.getCategory(), attribute);
+        }
+    }
+
+    /** Stores the raw string into the column matching the attribute's data type. */
+    private void assignTypedValue(OfferAttributeValue value, String dataType, String raw) {
+        if ("NUMBER".equals(dataType)) {
+            try {
+                value.setNumValue(new BigDecimal(raw.trim().replace(',', '.')));
+                return;
+            } catch (NumberFormatException ignored) {
+                // Not a number after all — fall back to text so nothing is lost.
+            }
+        } else if ("BOOL".equals(dataType)) {
+            value.setBoolValue(parseBool(raw));
+            return;
+        }
+        value.setTextValue(raw);
+    }
+
+    private boolean parseBool(String raw) {
+        String v = raw.trim().toLowerCase(Locale.ROOT);
+        return v.equals("true") || v.equals("tak") || v.equals("yes") || v.equals("1");
+    }
+
+    private void applyOfferImages(Offer offer, List<String> imageUrls) {
+        if (imageUrls == null) {
+            return;
+        }
+        int sortOrder = 0;
+        for (String raw : imageUrls) {
+            String url = trimToNull(raw);
+            if (url == null) {
+                continue;
+            }
+            OfferImage image = new OfferImage();
+            image.setOffer(offer);
+            image.setUrl(url);
+            image.setSortOrder(sortOrder++);
+            offer.getImages().add(image);
+        }
+    }
+
+    /** Declares {@code attribute} as a filterable facet for {@code category} (idempotent). */
+    private void registerCategoryFilter(Category category, Attribute attribute) {
+        if (category == null || attribute == null || attribute.getId() == null) {
+            return;
+        }
+        if (categoryAttributeRepository.existsByCategoryIdAndAttributeId(category.getId(), attribute.getId())) {
+            return;
         }
 
-        return offerRepository.save(offer);
+        CategoryAttribute categoryAttribute = new CategoryAttribute();
+        categoryAttribute.setCategory(category);
+        categoryAttribute.setAttribute(attribute);
+        categoryAttribute.setFilterable(true);
+        categoryAttribute.setRequired(false);
+        categoryAttribute.setSortOrder((int) categoryAttributeRepository.countByCategoryId(category.getId()));
+        categoryAttributeRepository.save(categoryAttribute);
     }
 
     public Product getProductBySlug(String slug) {
@@ -354,6 +444,11 @@ public class OffersService {
     }
 
     private Attribute resolveOrCreateTextAttribute(String attributeName) {
+        return resolveOrCreateAttribute(attributeName, "TEXT", null);
+    }
+
+    /** Finds an attribute by its slug code, or creates one with the given type/unit. */
+    private Attribute resolveOrCreateAttribute(String attributeName, String dataType, String unit) {
         String codeBase = slugify(attributeName);
         if (codeBase.isBlank()) {
             codeBase = "attribute";
@@ -367,10 +462,21 @@ public class OffersService {
         Attribute attribute = new Attribute();
         attribute.setCode(uniqueSlug(codeBase, attributeRepository::existsByCode));
         attribute.setName(attributeName);
-        attribute.setDataType("TEXT");
-        attribute.setUnit(null);
+        attribute.setDataType(normalizeDataType(dataType));
+        attribute.setUnit(trimToNull(unit));
         attribute.setVariantAxis(false);
         return attributeRepository.save(attribute);
+    }
+
+    private String normalizeDataType(String dataType) {
+        if (dataType == null) {
+            return "TEXT";
+        }
+        String normalized = dataType.trim().toUpperCase(Locale.ROOT);
+        return switch (normalized) {
+            case "NUMBER", "BOOL", "TEXT" -> normalized;
+            default -> "TEXT";
+        };
     }
 
     private String uniqueSlug(String baseText, Predicate<String> existsCheck) {
@@ -459,10 +565,23 @@ public class OffersService {
     }
 
     private List<AttributePair> collectAttributePairs(AddOfferInput input) {
-        LinkedHashMap<String, AttributePair> dedupedByCode = new LinkedHashMap<>();
+        List<AttributePair> pairs = toAttributePairs(input.attributes());
 
-        if (input.attributes() != null) {
-            for (AddOfferAttributeInput attr : input.attributes()) {
+        // Backward compatibility for older clients that still send one attribute.
+        String legacyName = trimToNull(input.attributeName());
+        String legacyValue = trimToNull(input.attributeValue());
+        if (legacyName != null && legacyValue != null
+                && pairs.stream().noneMatch(p -> slugify(p.name()).equals(slugify(legacyName)))) {
+            pairs.add(new AttributePair(legacyName, legacyValue));
+        }
+
+        return pairs;
+    }
+
+    private List<AttributePair> toAttributePairs(List<AddOfferAttributeInput> attributes) {
+        LinkedHashMap<String, AttributePair> dedupedByCode = new LinkedHashMap<>();
+        if (attributes != null) {
+            for (AddOfferAttributeInput attr : attributes) {
                 if (attr == null) {
                     continue;
                 }
@@ -476,14 +595,6 @@ public class OffersService {
                 dedupedByCode.put(slugify(name), new AttributePair(name, value));
             }
         }
-
-        // Backward compatibility for older clients that still send one attribute.
-        String legacyName = trimToNull(input.attributeName());
-        String legacyValue = trimToNull(input.attributeValue());
-        if (legacyName != null && legacyValue != null) {
-            dedupedByCode.putIfAbsent(slugify(legacyName), new AttributePair(legacyName, legacyValue));
-        }
-
         return new ArrayList<>(dedupedByCode.values());
     }
 

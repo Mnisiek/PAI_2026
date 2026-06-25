@@ -2,6 +2,7 @@
 import { computed, reactive, ref } from 'vue'
 import MainLayout from '../layouts/MainLayout.vue'
 import BaseCard from '../components/base/BaseCard.vue'
+import BaseSelectize from '../components/base/BaseSelectize.vue'
 import AdminNav from '../components/admin/AdminNav.vue'
 import { catalogAdminService } from '../services/catalogAdmin.service'
 import type { Category } from '../types/catalog'
@@ -29,11 +30,32 @@ const nameById = computed(() => new Map(categoryList.value.map((category) => [ca
 const parentName = (parentId: string | null): string =>
   parentId ? (nameById.value.get(parentId) ?? `#${parentId}`) : '— główna —'
 
+const parentOptions = computed(() =>
+  categoryList.value.map((category) => ({ value: category.id, label: category.name })),
+)
+
 const form = reactive({
   name: '',
   parentId: '',
 })
 const message = ref<string | null>(null)
+
+type FilterRow = { name: string; dataType: string }
+const filterAttributes = ref<FilterRow[]>([])
+
+const DATA_TYPE_OPTIONS = [
+  { value: 'TEXT', label: 'Tekst' },
+  { value: 'NUMBER', label: 'Liczba' },
+  { value: 'BOOL', label: 'Tak/Nie' },
+] as const
+
+const addFilterRow = (): void => {
+  filterAttributes.value.push({ name: '', dataType: 'TEXT' })
+}
+
+const removeFilterRow = (index: number): void => {
+  filterAttributes.value.splice(index, 1)
+}
 
 const submit = async (): Promise<void> => {
   message.value = null
@@ -44,14 +66,20 @@ const submit = async (): Promise<void> => {
     return
   }
 
+  const attributes = filterAttributes.value
+    .map((row) => ({ name: row.name.trim(), dataType: row.dataType }))
+    .filter((row) => row.name)
+
   try {
     const created = await catalogAdminService.addCategory({
       name: form.name.trim(),
       parentId: form.parentId || null,
+      attributes: attributes.length > 0 ? attributes : undefined,
     })
     message.value = `Dodano kategorię „${created.name}".`
     form.name = ''
     form.parentId = ''
+    filterAttributes.value = []
     await refreshList()
   } catch (caught) {
     error.value = caught instanceof Error ? caught.message : 'Nie udało się dodać kategorii.'
@@ -71,10 +99,6 @@ const submit = async (): Promise<void> => {
 
       <AdminNav />
 
-      <p class="cat-admin__note">
-        Dodawanie kategorii korzysta z backendowej mutacji GraphQL i zapisuje dane na stałe.
-      </p>
-
       <div class="cat-admin__grid">
         <BaseCard class="panel">
           <h2 class="panel__title">Dodaj kategorię</h2>
@@ -83,15 +107,41 @@ const submit = async (): Promise<void> => {
               <span>Nazwa *</span>
               <input v-model="form.name" type="text" required />
             </label>
-            <label class="form__field">
+            <div class="form__field">
               <span>Kategoria nadrzędna</span>
-              <select v-model="form.parentId">
-                <option value="">— Kategoria główna —</option>
-                <option v-for="category in categoryList" :key="category.id" :value="category.id">
-                  {{ category.name }}
-                </option>
-              </select>
-            </label>
+              <BaseSelectize
+                v-model="form.parentId"
+                :options="parentOptions"
+                empty-label="— Kategoria główna —"
+                placeholder="— Kategoria główna —"
+                aria-label="Kategoria nadrzędna"
+              />
+            </div>
+
+            <div class="form__field">
+              <span>Dostępne filtry</span>
+              <div class="filter-defs">
+                <div
+                  v-for="(row, index) in filterAttributes"
+                  :key="index"
+                  class="filter-defs__row"
+                >
+                  <input v-model="row.name" type="text" placeholder="Nazwa filtra (np. Rozmiar)" />
+                  <select v-model="row.dataType" aria-label="Typ filtra">
+                    <option v-for="opt in DATA_TYPE_OPTIONS" :key="opt.value" :value="opt.value">
+                      {{ opt.label }}
+                    </option>
+                  </select>
+                  <button type="button" class="filter-defs__remove" @click="removeFilterRow(index)">
+                    Usuń
+                  </button>
+                </div>
+
+                <button type="button" class="filter-defs__add" @click="addFilterRow">
+                  Dodaj filtr
+                </button>
+              </div>
+            </div>
 
             <p v-if="error" class="form__error">{{ error }}</p>
             <p v-if="message" class="form__ok">{{ message }}</p>
@@ -140,16 +190,6 @@ const submit = async (): Promise<void> => {
   color: var(--color-text-primary);
 }
 
-.cat-admin__note {
-  margin: 0;
-  font-size: 0.84rem;
-  color: var(--color-text-secondary);
-  background: rgba(234, 179, 8, 0.12);
-  border: 1px solid rgba(234, 179, 8, 0.3);
-  border-radius: 12px;
-  padding: 0.55rem 0.8rem;
-}
-
 .cat-admin__grid {
   display: grid;
   gap: 1rem;
@@ -176,12 +216,15 @@ const submit = async (): Promise<void> => {
   display: flex;
   flex-direction: column;
   gap: 0.25rem;
+  min-width: 0;
   font-size: 0.84rem;
   color: var(--color-text-secondary);
 }
 
 .form__field input,
 .form__field select {
+  width: 100%;
+  min-width: 0;
   border: 1px solid var(--color-border-soft);
   border-radius: 10px;
   padding: 0.5rem 0.6rem;
@@ -221,6 +264,40 @@ const submit = async (): Promise<void> => {
 
 .form__submit:hover {
   background: #0d6660;
+}
+
+.filter-defs {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+}
+
+.filter-defs__row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.filter-defs__add,
+.filter-defs__remove {
+  border: 1px solid var(--color-border-soft);
+  border-radius: 10px;
+  background: #fff;
+  color: var(--color-text-secondary);
+  font: inherit;
+  cursor: pointer;
+  padding: 0.45rem 0.7rem;
+}
+
+.filter-defs__add {
+  align-self: flex-start;
+}
+
+.filter-defs__add:hover,
+.filter-defs__remove:hover {
+  border-color: var(--color-brand-strong);
+  color: var(--color-brand-strong);
 }
 
 .cat-list {
@@ -269,6 +346,21 @@ const submit = async (): Promise<void> => {
 @media (min-width: 820px) {
   .cat-admin__grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 560px) {
+  .cat-list__row {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+
+  .filter-defs__row {
+    grid-template-columns: 1fr auto;
+  }
+
+  .cat-list__parent {
+    grid-column: 1 / -1;
+    font-size: 0.8rem;
   }
 }
 </style>

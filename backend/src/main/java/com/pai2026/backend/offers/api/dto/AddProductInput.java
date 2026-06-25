@@ -1,5 +1,7 @@
 package com.pai2026.backend.offers.api.dto;
 
+import java.util.List;
+
 public record AddProductInput(
         String name,
         String description,
@@ -8,5 +10,6 @@ public record AddProductInput(
         String imageUrl,
         String brandName,
         String sku,
-        Integer stock
+        Integer stock,
+        List<AddOfferAttributeInput> attributes
 ) {}

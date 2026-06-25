@@ -1,0 +1,16 @@
+query GetFacets($categorySlug: ID!, $search: String, $filter: ProductFilter) {
+  offersModule {
+    facets(categorySlug: $categorySlug, search: $search, filter: $filter) {
+      code
+      name
+      dataType
+      unit
+      options {
+        value
+        count
+      }
+      min
+      max
+    }
+  }
+}

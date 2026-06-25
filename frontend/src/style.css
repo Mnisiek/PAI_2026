@@ -17,6 +17,23 @@
   box-sizing: border-box;
 }
 
+/* Media and form controls must never force horizontal overflow on small screens. */
+img,
+svg,
+video {
+  max-width: 100%;
+}
+
+img {
+  height: auto;
+}
+
+input,
+select,
+textarea {
+  max-width: 100%;
+}
+
 html,
 body,
 #app {

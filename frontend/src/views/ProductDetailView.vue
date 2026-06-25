@@ -246,10 +246,19 @@ useAsyncData('product-detail', loadProduct, {
                   :disabled="offer.stock === 0"
                   @click="selectOffer(offer)"
                 >
-                  <span class="pdp__variant-name">{{ offerLabel(offer) }}</span>
-                  <span class="pdp__variant-meta">
-                    {{ formatPrice(offer.price.amount) }} ·
-                    {{ offer.stock > 0 ? `${offer.stock} szt.` : 'brak' }}
+                  <img
+                    v-if="offer.images?.length"
+                    :src="offer.images[0].url"
+                    :alt="offer.images[0].alt ?? ''"
+                    class="pdp__variant-thumb"
+                    loading="lazy"
+                  />
+                  <span class="pdp__variant-text">
+                    <span class="pdp__variant-name">{{ offerLabel(offer) }}</span>
+                    <span class="pdp__variant-meta">
+                      {{ formatPrice(offer.price.amount) }} ·
+                      {{ offer.stock > 0 ? `${offer.stock} szt.` : 'brak' }}
+                    </span>
                   </span>
                 </button>
               </div>
@@ -453,8 +462,9 @@ useAsyncData('product-detail', loadProduct, {
 
 .pdp__variant {
   display: flex;
-  flex-direction: column;
-  gap: 0.15rem;
+  flex-direction: row;
+  align-items: center;
+  gap: 0.5rem;
   border: 1px solid var(--color-border-soft);
   border-radius: 12px;
   background: #fff;
@@ -462,6 +472,20 @@ useAsyncData('product-detail', loadProduct, {
   cursor: pointer;
   text-align: left;
   transition: border-color 0.16s ease, background-color 0.16s ease;
+}
+
+.pdp__variant-thumb {
+  width: 34px;
+  height: 34px;
+  object-fit: cover;
+  border-radius: 8px;
+  flex-shrink: 0;
+}
+
+.pdp__variant-text {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
 }
 
 .pdp__variant:hover {

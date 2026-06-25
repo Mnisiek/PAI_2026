@@ -28,6 +28,10 @@ query GetProduct($slug: ID!) {
           numValue
           boolValue
         }
+        images {
+          url
+          alt
+        }
       }
       specs {
         key

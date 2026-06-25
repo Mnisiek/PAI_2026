@@ -10,16 +10,19 @@
 
 <style scoped>
 .admin-nav {
-  display: inline-flex;
+  display: flex;
   flex-wrap: wrap;
   gap: 0.3rem;
   padding: 0.3rem;
   border: 1px solid var(--color-border-soft);
-  border-radius: 999px;
+  border-radius: 18px;
   background: rgba(255, 255, 255, 0.72);
 }
 
 .admin-nav__tab {
+  flex: 1 1 auto;
+  text-align: center;
+  white-space: nowrap;
   text-decoration: none;
   font-size: 0.86rem;
   color: var(--color-text-secondary);

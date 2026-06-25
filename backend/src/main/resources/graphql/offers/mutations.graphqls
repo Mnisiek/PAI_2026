@@ -13,6 +13,14 @@ extend type Mutation {
 input AddCategoryInput {
     name: String!
     parentId: ID
+    "Filters (attributes) made available for this category."
+    attributes: [CategoryAttributeInput!]
+}
+
+input CategoryAttributeInput {
+    name: String!
+    dataType: AttributeDataType = TEXT
+    unit: String
 }
 
 input AddProductInput {
@@ -24,6 +32,8 @@ input AddProductInput {
     brandName: String
     sku: String!
     stock: Int!
+    "Attribute values for the product's initial offer."
+    attributes: [AddOfferAttributeInput!]
 }
 
 input AddOfferInput {
@@ -34,6 +44,8 @@ input AddOfferInput {
     attributeName: String
     attributeValue: String
     attributes: [AddOfferAttributeInput!]
+    "Image URLs for this variant (thumbnails)."
+    images: [String!]
 }
 
 input AddOfferAttributeInput {

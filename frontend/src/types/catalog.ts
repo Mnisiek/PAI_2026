@@ -22,6 +22,11 @@ export interface AttributeValue {
   boolValue?: boolean | null
 }
 
+export interface OfferImage {
+  url: string
+  alt?: string | null
+}
+
 export interface Offer {
   id: string
   sku: string
@@ -29,6 +34,7 @@ export interface Offer {
   stock: number
   status: string
   attributes: AttributeValue[]
+  images?: OfferImage[]
 }
 
 export interface Spec {
@@ -58,9 +64,38 @@ export interface Product {
   specs?: Spec[]
 }
 
+// A single attribute filter the user has applied (mirrors backend AttributeFilterInput).
+export interface AttributeFilter {
+  code: string
+  values?: string[] | null
+  min?: number | null
+  max?: number | null
+}
+
 export interface CatalogFilterInput {
   search?: string
   categoryId?: string | null
+  priceMin?: number | null
+  priceMax?: number | null
+  inStock?: boolean
+  attributes?: AttributeFilter[]
+}
+
+export interface FacetOption {
+  value: string
+  count: number
+}
+
+// A filter the category offers (mirrors backend Facet). TEXT/BOOL expose `options`,
+// NUMBER exposes `min`/`max`.
+export interface Facet {
+  code: string
+  name: string
+  dataType: AttributeDataType
+  unit?: string | null
+  options: FacetOption[]
+  min?: number | null
+  max?: number | null
 }
 
 export interface ProductPage {

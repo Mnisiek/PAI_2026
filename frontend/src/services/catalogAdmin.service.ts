@@ -12,6 +12,7 @@ export interface NewProductInput {
   brandName?: string
   sku: string
   stock: number
+  attributes?: NewOfferAttributeInput[]
 }
 
 export interface NewOfferInput {
@@ -20,6 +21,7 @@ export interface NewOfferInput {
   price: number
   stock: number
   attributes?: NewOfferAttributeInput[]
+  images?: string[]
   attributeName?: string
   attributeValue?: string
 }
@@ -29,9 +31,16 @@ export interface NewOfferAttributeInput {
   value: string
 }
 
+export interface NewCategoryAttributeInput {
+  name: string
+  dataType: string
+  unit?: string | null
+}
+
 export interface NewCategoryInput {
   name: string
   parentId?: string | null
+  attributes?: NewCategoryAttributeInput[]
 }
 
 interface CategoriesResponse {

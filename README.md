@@ -60,7 +60,25 @@ cd backend
 The server will start on `http://localhost:8080`.
 You can access the GraphiQL interface at `http://localhost:8080/graphiql`.
 
-### 3. Running the Frontend (Vue.js)
+On first boot Liquibase creates the schema, but the database starts **empty** —
+the demo catalog and login user are no longer seeded automatically by the app.
+
+### 3. Seeding Demo Data
+
+With the infrastructure up (step 1), load the demo fixtures. These scripts run
+against the running Docker containers and are idempotent (safe to re-run). The
+Postgres script applies the schema itself (via Liquibase against the same
+`db/changelog` files the backend uses), so it can run before the backend boots:
+
+```bash
+# Postgres: schema + brands, categories, products, offers + demo login (jan@example.com / demo1234)
+scripts/seed-postgres.sh
+
+# ClickHouse + Valkey: activity events and retargeting hashes
+scripts/seed-activity.sh
+```
+
+### 4. Running the Frontend (Vue.js)
 
 #### Prerequisites
 

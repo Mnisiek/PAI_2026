@@ -9,5 +9,6 @@ public record AddOfferInput(
         Integer stock,
         String attributeName,
         String attributeValue,
-        List<AddOfferAttributeInput> attributes
+        List<AddOfferAttributeInput> attributes,
+        List<String> images
 ) {}
