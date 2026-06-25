@@ -1,5 +1,6 @@
 package com.pai2026.backend.offers.service;
 
+import com.pai2026.backend.activity.persistence.RetargetingStore;
 import com.pai2026.backend.offers.api.dto.*;
 import com.pai2026.backend.offers.domain.*;
 import com.pai2026.backend.offers.repository.*;
@@ -28,6 +29,7 @@ public class OffersService {
     private final BrandRepository brandRepository;
     private final OfferRepository offerRepository;
     private final AttributeRepository attributeRepository;
+    private final RetargetingStore retargetingStore;
 
     @PersistenceContext
     private EntityManager entityManager;
@@ -37,12 +39,14 @@ public class OffersService {
             CategoryRepository categoryRepository,
             BrandRepository brandRepository,
             OfferRepository offerRepository,
-            AttributeRepository attributeRepository) {
+            AttributeRepository attributeRepository,
+            RetargetingStore retargetingStore) {
         this.productRepository = productRepository;
         this.categoryRepository = categoryRepository;
         this.brandRepository = brandRepository;
         this.offerRepository = offerRepository;
         this.attributeRepository = attributeRepository;
+        this.retargetingStore = retargetingStore;
     }
 
     @Transactional
@@ -324,6 +328,81 @@ public class OffersService {
         }
         return ids;
     }
+
+    public List<Product> getRetargetedProducts(String userId, String sessionId, int limit) {
+        List<RetargetingStore.RetargetingSignal> signals = retargetingStore.getSignals(userId, sessionId);
+        if (signals.isEmpty()) {
+            Pageable pageable = PageRequest.of(0, limit);
+            return productRepository.findAll(pageable).getContent();
+        }
+
+        List<Long> productIds = signals.stream()
+                .filter(s -> "product".equals(s.targetType()))
+                .map(RetargetingStore.RetargetingSignal::targetId)
+                .collect(Collectors.toList());
+
+        List<Long> categoryIds = signals.stream()
+                .filter(s -> "category".equals(s.targetType()))
+                .map(RetargetingStore.RetargetingSignal::targetId)
+                .collect(Collectors.toList());
+
+        List<Product> result = new ArrayList<>();
+        Set<Long> collectedProductIds = new HashSet<>();
+
+        if (!productIds.isEmpty()) {
+            List<Product> directProducts = productRepository.findAllById(productIds);
+            Map<Long, Product> productMap = directProducts.stream()
+                    .collect(Collectors.toMap(Product::getId, p -> p));
+            for (Long pid : productIds) {
+                Product p = productMap.get(pid);
+                if (p != null && "ACTIVE".equals(p.getStatus())) {
+                    result.add(p);
+                    collectedProductIds.add(pid);
+                }
+            }
+        }
+
+        if (result.size() < limit && !categoryIds.isEmpty()) {
+            List<Product> categoryProducts = entityManager.createQuery(
+                    "SELECT p FROM Product p WHERE p.category.id IN :categoryIds AND p.status = 'ACTIVE' ORDER BY p.id DESC", Product.class)
+                    .setParameter("categoryIds", categoryIds)
+                    .setMaxResults(limit * 2)
+                    .getResultList();
+
+            for (Product p : categoryProducts) {
+                if (result.size() >= limit) {
+                    break;
+                }
+                if (!collectedProductIds.contains(p.getId())) {
+                    result.add(p);
+                    collectedProductIds.add(p.getId());
+                }
+            }
+        }
+
+        if (result.size() < limit) {
+            List<Product> newestProducts = entityManager.createQuery(
+                    "SELECT p FROM Product p WHERE p.status = 'ACTIVE' ORDER BY p.id DESC", Product.class)
+                    .setMaxResults(limit * 2)
+                    .getResultList();
+
+            for (Product p : newestProducts) {
+                if (result.size() >= limit) {
+                    break;
+                }
+                if (!collectedProductIds.contains(p.getId())) {
+                    result.add(p);
+                    collectedProductIds.add(p.getId());
+                }
+            }
+        }
+
+        if (result.size() > limit) {
+            return result.subList(0, limit);
+        }
+        return result;
+    }
+
     private Brand resolveOrCreateBrand(String brandNameRaw) {
         String brandName = trimToNull(brandNameRaw);
         if (brandName == null) {

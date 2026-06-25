@@ -11,9 +11,11 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.graphql.test.autoconfigure.GraphQlTest;
 import org.springframework.graphql.test.tester.GraphQlTester;
+import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 
 @GraphQlTest(ActivityQueryController.class)
+@org.springframework.context.annotation.Import(com.pai2026.backend.config.SecurityConfig.class)
 class ActivityQueryControllerTest {
 
     @Autowired
@@ -22,7 +24,11 @@ class ActivityQueryControllerTest {
     @MockitoBean
     ActivityAnalyticsService analytics;
 
+    @MockitoBean
+    com.pai2026.backend.config.JwtFilter jwtFilter;
+
     @Test
+    @WithMockUser(roles = "ADMIN")
     void summaryReturnsTotals() {
         when(analytics.summary(any(), any())).thenReturn(new ActivitySummary(42, 10, 7));
 
@@ -32,6 +38,7 @@ class ActivityQueryControllerTest {
     }
 
     @Test
+    @WithMockUser(roles = "ADMIN")
     void eventsByTypeReturnsRows() {
         when(analytics.eventsByType(any(), any()))
                 .thenReturn(List.of(new EventTypeCount("VIEW", 5), new EventTypeCount("PURCHASE", 2)));
