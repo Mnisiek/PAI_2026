@@ -13,6 +13,8 @@ type Product {
     specs: [Spec!]!
     status: ProductStatus!
     offers: [Offer!]!
+    "All offers regardless of status — for admin management."
+    allOffers: [Offer!]!
     "Lowest active offer price — for 'from X' on listings."
     priceFrom: Money
     "A sensible default offer to preselect (e.g. cheapest in stock)."

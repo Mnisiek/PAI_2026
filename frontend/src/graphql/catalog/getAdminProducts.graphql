@@ -1,0 +1,52 @@
+query AdminProducts {
+  offersModule {
+    adminProducts {
+      id
+      slug
+      name
+      description
+      mainImageUrl
+      status
+      priceFrom {
+        amount
+        currency
+      }
+      brand {
+        id
+        name
+        slug
+      }
+      category {
+        id
+        name
+        slug
+        parentId
+        isLeaf
+      }
+      offers {
+        id
+        sku
+        price {
+          amount
+          currency
+        }
+        stock
+        status
+        attributes {
+          code
+          name
+          dataType
+          unit
+          textValue
+          numValue
+          boolValue
+        }
+      }
+      allOffers {
+        id
+        sku
+        status
+      }
+    }
+  }
+}

@@ -7,7 +7,7 @@ import AdminNav from '../components/admin/AdminNav.vue'
 import { useCurrency } from '../composables/useCurrency'
 import { catalogAdminService } from '../services/catalogAdmin.service'
 import { catalogService } from '../services/catalog.service'
-import type { Category, Product } from '../types/catalog'
+import type { AdminOffer, Category, Product } from '../types/catalog'
 
 const { formatPrice } = useCurrency()
 
@@ -92,6 +92,28 @@ const cancelEditProduct = (): void => {
   resetProductForm()
   productMessage.value = null
   productError.value = null
+}
+
+const toggleProductStatus = async (product: Product): Promise<void> => {
+  const next = product.status === 'ACTIVE' ? 'ARCHIVED' : 'ACTIVE'
+  try {
+    await catalogAdminService.setProductStatus(product.id, next)
+    await refreshList()
+  } catch (caught) {
+    productError.value =
+      caught instanceof Error ? caught.message : 'Nie udało się zmienić statusu produktu.'
+  }
+}
+
+const toggleOfferStatus = async (offer: AdminOffer): Promise<void> => {
+  const next = offer.status === 'ACTIVE' ? 'INACTIVE' : 'ACTIVE'
+  try {
+    await catalogAdminService.setOfferStatus(offer.id, next)
+    await refreshList()
+  } catch (caught) {
+    productError.value =
+      caught instanceof Error ? caught.message : 'Nie udało się zmienić statusu wariantu.'
+  }
 }
 
 const submitProduct = async (): Promise<void> => {
@@ -462,14 +484,53 @@ const submitOffer = async (): Promise<void> => {
       <BaseCard class="panel">
         <h2 class="panel__title">Produkty w katalogu ({{ productList.length }})</h2>
         <ul class="catalog-list">
-          <li v-for="product in productList" :key="product.id" class="catalog-list__row">
-            <span class="catalog-list__name">{{ product.name }}</span>
-            <span class="catalog-list__cat">{{ product.category.name }}</span>
-            <span class="catalog-list__variants">{{ product.offers.length }} wariant(ów)</span>
-            <span class="catalog-list__price">od {{ formatPrice(product.priceFrom.amount) }}</span>
-            <button type="button" class="catalog-list__edit" @click="startEditProduct(product)">
-              Edytuj
-            </button>
+          <li
+            v-for="product in productList"
+            :key="product.id"
+            class="catalog-item"
+            :class="{ 'catalog-item--inactive': product.status !== 'ACTIVE' }"
+          >
+            <div class="catalog-item__head">
+              <span class="catalog-item__name">{{ product.name }}</span>
+              <span
+                class="catalog-item__status"
+                :class="{ 'catalog-item__status--off': product.status !== 'ACTIVE' }"
+              >
+                {{ product.status === 'ACTIVE' ? 'Aktywny' : 'Nieaktywny' }}
+              </span>
+            </div>
+
+            <div class="catalog-item__meta">
+              <span>{{ product.category.name }}</span>
+              <span>{{ product.allOffers?.length ?? 0 }} wariant(ów)</span>
+              <span v-if="product.priceFrom" class="catalog-item__price">
+                od {{ formatPrice(product.priceFrom.amount) }}
+              </span>
+            </div>
+
+            <div class="catalog-item__actions">
+              <button type="button" class="catalog-item__btn" @click="startEditProduct(product)">
+                Edytuj
+              </button>
+              <button type="button" class="catalog-item__btn" @click="toggleProductStatus(product)">
+                {{ product.status === 'ACTIVE' ? 'Dezaktywuj' : 'Aktywuj' }}
+              </button>
+            </div>
+
+            <ul v-if="product.allOffers?.length" class="offer-list">
+              <li v-for="offer in product.allOffers" :key="offer.id" class="offer-list__row">
+                <span class="offer-list__sku">{{ offer.sku }}</span>
+                <span
+                  class="offer-list__status"
+                  :class="{ 'offer-list__status--off': offer.status !== 'ACTIVE' }"
+                >
+                  {{ offer.status === 'ACTIVE' ? 'aktywny' : 'nieaktywny' }}
+                </span>
+                <button type="button" class="offer-list__btn" @click="toggleOfferStatus(offer)">
+                  {{ offer.status === 'ACTIVE' ? 'Dezaktywuj' : 'Aktywuj' }}
+                </button>
+              </li>
+            </ul>
           </li>
         </ul>
       </BaseCard>
@@ -630,22 +691,6 @@ const submitOffer = async (): Promise<void> => {
   color: var(--color-brand-strong);
 }
 
-.catalog-list__edit {
-  justify-self: end;
-  border: 1px solid var(--color-border-soft);
-  border-radius: 999px;
-  background: #fff;
-  color: var(--color-text-secondary);
-  font-size: 0.78rem;
-  padding: 0.28rem 0.7rem;
-  cursor: pointer;
-}
-
-.catalog-list__edit:hover {
-  border-color: var(--color-brand-strong);
-  color: var(--color-brand-strong);
-}
-
 .variant-attributes {
   display: flex;
   flex-direction: column;
@@ -713,32 +758,123 @@ const submitOffer = async (): Promise<void> => {
   gap: 0.4rem;
 }
 
-.catalog-list__row {
-  display: grid;
-  grid-template-columns: minmax(0, 2fr) minmax(0, 1fr) auto auto auto;
-  gap: 0.6rem;
-  align-items: center;
-  border-bottom: 1px solid var(--color-border-soft);
-  padding-bottom: 0.4rem;
-  font-size: 0.86rem;
+.catalog-item {
+  border: 1px solid var(--color-border-soft);
+  border-radius: 14px;
+  padding: 0.7rem 0.8rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
 }
 
-.catalog-list__name {
+.catalog-item--inactive {
+  opacity: 0.7;
+  background: rgba(148, 163, 184, 0.08);
+}
+
+.catalog-item__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.6rem;
+}
+
+.catalog-item__name {
+  font-weight: 600;
   color: var(--color-text-primary);
-  overflow: hidden;
-  text-overflow: ellipsis;
+}
+
+.catalog-item__status {
+  font-size: 0.72rem;
+  border-radius: 999px;
+  padding: 0.15rem 0.55rem;
+  background: rgba(20, 184, 166, 0.14);
+  color: var(--color-brand-strong);
   white-space: nowrap;
 }
 
-.catalog-list__cat,
-.catalog-list__variants {
+.catalog-item__status--off {
+  background: rgba(148, 163, 184, 0.22);
   color: var(--color-text-secondary);
 }
 
-.catalog-list__price {
+.catalog-item__meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  font-size: 0.82rem;
+  color: var(--color-text-secondary);
+}
+
+.catalog-item__price {
   font-weight: 600;
   color: var(--color-brand-strong);
-  text-align: right;
+}
+
+.catalog-item__actions {
+  display: flex;
+  gap: 0.4rem;
+}
+
+.catalog-item__btn {
+  border: 1px solid var(--color-border-soft);
+  border-radius: 999px;
+  background: #fff;
+  color: var(--color-text-secondary);
+  font-size: 0.78rem;
+  padding: 0.28rem 0.75rem;
+  cursor: pointer;
+}
+
+.catalog-item__btn:hover {
+  border-color: var(--color-brand-strong);
+  color: var(--color-brand-strong);
+}
+
+.offer-list {
+  list-style: none;
+  margin: 0.2rem 0 0;
+  padding: 0.4rem 0 0;
+  border-top: 1px dashed var(--color-border-soft);
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+
+.offer-list__row {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  font-size: 0.8rem;
+}
+
+.offer-list__sku {
+  flex: 1 1 auto;
+  color: var(--color-text-primary);
+}
+
+.offer-list__status {
+  font-size: 0.72rem;
+  color: var(--color-brand-strong);
+}
+
+.offer-list__status--off {
+  color: var(--color-text-muted);
+}
+
+.offer-list__btn {
+  border: 1px solid var(--color-border-soft);
+  border-radius: 999px;
+  background: #fff;
+  color: var(--color-text-secondary);
+  font-size: 0.74rem;
+  padding: 0.2rem 0.6rem;
+  cursor: pointer;
+}
+
+.offer-list__btn:hover {
+  border-color: var(--color-brand-strong);
+  color: var(--color-brand-strong);
 }
 
 @media (min-width: 820px) {
@@ -758,19 +894,6 @@ const submitOffer = async (): Promise<void> => {
 
   .variant-attributes__remove {
     justify-self: start;
-  }
-
-  .catalog-list__row {
-    grid-template-columns: 1fr;
-    gap: 0.15rem;
-  }
-
-  .catalog-list__name {
-    white-space: normal;
-  }
-
-  .catalog-list__price {
-    text-align: left;
   }
 }
 </style>

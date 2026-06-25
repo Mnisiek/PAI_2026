@@ -1,0 +1,6 @@
+mutation SetOfferStatus($id: ID!, $status: OfferStatus!) {
+  setOfferStatus(id: $id, status: $status) {
+    id
+    status
+  }
+}

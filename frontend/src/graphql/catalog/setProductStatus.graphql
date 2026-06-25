@@ -1,0 +1,6 @@
+mutation SetProductStatus($id: ID!, $status: ProductStatus!) {
+  setProductStatus(id: $id, status: $status) {
+    id
+    status
+  }
+}

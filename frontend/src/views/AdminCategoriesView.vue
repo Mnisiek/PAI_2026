@@ -89,18 +89,20 @@ const submit = async (): Promise<void> => {
     return
   }
 
+  const attributes = filterAttributes.value
+    .map((row) => ({ name: row.name.trim(), dataType: row.dataType }))
+    .filter((row) => row.name)
+
   try {
     if (editingId.value) {
       const updated = await catalogAdminService.updateCategory({
         id: editingId.value,
         name: form.name.trim(),
         parentId: form.parentId || null,
+        attributes: attributes.length > 0 ? attributes : undefined,
       })
       message.value = `Zaktualizowano kategorię „${updated.name}".`
     } else {
-      const attributes = filterAttributes.value
-        .map((row) => ({ name: row.name.trim(), dataType: row.dataType }))
-        .filter((row) => row.name)
       const created = await catalogAdminService.addCategory({
         name: form.name.trim(),
         parentId: form.parentId || null,
@@ -147,7 +149,7 @@ const submit = async (): Promise<void> => {
               />
             </div>
 
-            <div v-if="!editingId" class="form__field">
+            <div class="form__field">
               <span>Dostępne filtry</span>
               <div class="filter-defs">
                 <div

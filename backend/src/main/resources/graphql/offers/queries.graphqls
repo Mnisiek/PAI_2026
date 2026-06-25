@@ -56,4 +56,7 @@ type OffersModuleQuery {
 
     "Categories tailored to the user (retargeted → popular → random fallback). Requires authentication."
     recommendedCategories(userId: String, sessionId: String, limit: Int = 8): [Category!]!
+
+    "All products regardless of status, for admin management. Requires ADMIN."
+    adminProducts: [Product!]!
 }

@@ -191,7 +191,24 @@ public class OffersService {
         }
         category.setParent(parent);
 
-        return categoryRepository.save(category);
+        Category saved = categoryRepository.save(category);
+
+        // Additional declared filters become filterable category_attribute rows.
+        if (input.attributes() != null) {
+            for (CategoryAttributeInput attr : input.attributes()) {
+                if (attr == null) {
+                    continue;
+                }
+                String attrName = trimToNull(attr.name());
+                if (attrName == null) {
+                    continue;
+                }
+                Attribute attribute = resolveOrCreateAttribute(attrName, attr.dataType(), attr.unit());
+                registerCategoryFilter(saved, attribute);
+            }
+        }
+
+        return saved;
     }
 
     @Transactional
@@ -213,6 +230,50 @@ public class OffersService {
         product.setSearchText(buildSearchText(name, input.description(), input.brandName(), category.getName()));
 
         return productRepository.save(product);
+    }
+
+    @Transactional
+    public Product setProductStatus(String idStr, String status) {
+        Long id = parseId(idStr, "Invalid product id.");
+        Product product = productRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Product not found."));
+        product.setStatus(normalizeProductStatus(status));
+        return productRepository.save(product);
+    }
+
+    @Transactional
+    public Offer setOfferStatus(String idStr, String status) {
+        Long id = parseId(idStr, "Invalid offer id.");
+        Offer offer = offerRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Offer not found."));
+        offer.setStatus(normalizeOfferStatus(status));
+        return offerRepository.save(offer);
+    }
+
+    /** Every product regardless of status — admin management view. */
+    public List<Product> getAllProductsForAdmin() {
+        return productRepository.findAll(Sort.by(Sort.Direction.DESC, "id"));
+    }
+
+    /** Every offer for a product regardless of status — admin management view. */
+    public List<Offer> getAllOffersForProduct(Product product) {
+        return offerRepository.findByProductIdOrderById(product.getId());
+    }
+
+    private String normalizeProductStatus(String status) {
+        String value = status == null ? "" : status.trim().toUpperCase(Locale.ROOT);
+        return switch (value) {
+            case "ACTIVE", "ARCHIVED", "DRAFT" -> value;
+            default -> throw new IllegalArgumentException("Invalid product status.");
+        };
+    }
+
+    private String normalizeOfferStatus(String status) {
+        String value = status == null ? "" : status.trim().toUpperCase(Locale.ROOT);
+        return switch (value) {
+            case "ACTIVE", "INACTIVE" -> value;
+            default -> throw new IllegalArgumentException("Invalid offer status.");
+        };
     }
 
     /**

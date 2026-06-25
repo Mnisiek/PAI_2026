@@ -14,12 +14,20 @@ extend type Mutation {
 
     "Update an existing product's core fields (name, description, category, brand, image)."
     updateProduct(input: UpdateProductInput!): Product!
+
+    "Set a product's status — ACTIVE to publish, ARCHIVED to deactivate."
+    setProductStatus(id: ID!, status: ProductStatus!): Product!
+
+    "Set an offer's status — ACTIVE or INACTIVE."
+    setOfferStatus(id: ID!, status: OfferStatus!): Offer!
 }
 
 input UpdateCategoryInput {
     id: ID!
     name: String!
     parentId: ID
+    "Additional filters to declare for this category (added to any existing ones)."
+    attributes: [CategoryAttributeInput!]
 }
 
 input UpdateProductInput {

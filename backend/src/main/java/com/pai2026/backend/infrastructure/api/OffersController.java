@@ -61,6 +61,18 @@ public class OffersController {
     public Product updateProduct(@Argument UpdateProductInput input) {
         return offersService.updateProduct(input);
     }
+
+    @MutationMapping
+    @PreAuthorize("hasRole('ADMIN')")
+    public Product setProductStatus(@Argument String id, @Argument String status) {
+        return offersService.setProductStatus(id, status);
+    }
+
+    @MutationMapping
+    @PreAuthorize("hasRole('ADMIN')")
+    public Offer setOfferStatus(@Argument String id, @Argument String status) {
+        return offersService.setOfferStatus(id, status);
+    }
     @SchemaMapping(typeName = "OffersModuleQuery")
     public Product product(@Argument String slug) {
         return offersService.getProductBySlug(slug);
@@ -129,7 +141,18 @@ public class OffersController {
         return offersService.getRecommendedCategories(userId, sessionId, limit);
     }
 
+    @SchemaMapping(typeName = "OffersModuleQuery")
+    @PreAuthorize("hasRole('ADMIN')")
+    public List<Product> adminProducts() {
+        return offersService.getAllProductsForAdmin();
+    }
+
     // --- Product Field Resolvers ---
+
+    @SchemaMapping(typeName = "Product")
+    public List<Offer> allOffers(Product product) {
+        return offersService.getAllOffersForProduct(product);
+    }
 
     @SchemaMapping(typeName = "Product")
     public List<Category> breadcrumbs(Product product) {

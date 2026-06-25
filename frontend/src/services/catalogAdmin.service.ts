@@ -1,9 +1,11 @@
 import { getApolloClient } from '../apollo clients/apolloClient'
-import { GET_CATEGORIES, GET_PRODUCTS } from '../graphql/catalog.queries'
+import { GET_ADMIN_PRODUCTS, GET_CATEGORIES } from '../graphql/catalog.queries'
 import {
   ADD_CATEGORY_MUTATION,
   ADD_OFFER_MUTATION,
   ADD_PRODUCT_MUTATION,
+  SET_OFFER_STATUS_MUTATION,
+  SET_PRODUCT_STATUS_MUTATION,
   UPDATE_CATEGORY_MUTATION,
   UPDATE_PRODUCT_MUTATION,
 } from '../graphql/catalog.mutations'
@@ -53,6 +55,7 @@ export interface UpdateCategoryInput {
   id: string
   name: string
   parentId?: string | null
+  attributes?: NewCategoryAttributeInput[]
 }
 
 export interface UpdateProductInput {
@@ -70,11 +73,9 @@ interface CategoriesResponse {
   }
 }
 
-interface ProductsResponse {
+interface AdminProductsResponse {
   offersModule: {
-    products: {
-      items: Product[]
-    }
+    adminProducts: Product[]
   }
 }
 
@@ -119,19 +120,16 @@ const flattenCategories = (roots: Category[]): Category[] => {
 export const catalogAdminService = {
   async listProducts(): Promise<Product[]> {
     const client = getApolloClient()
-    const { data } = await client.query<ProductsResponse>({
-      query: GET_PRODUCTS,
-      variables: {
-        search: null,
-        filter: null,
-      },
+    const { data } = await client.query<AdminProductsResponse>({
+      query: GET_ADMIN_PRODUCTS,
+      fetchPolicy: 'no-cache',
     })
 
     if (!data) {
       throw new Error('Products query returned no data.')
     }
 
-    return data.offersModule.products.items
+    return data.offersModule.adminProducts
   },
 
   async addProduct(input: NewProductInput): Promise<Product> {
@@ -215,5 +213,21 @@ export const catalogAdminService = {
     }
 
     return data.updateProduct
+  },
+
+  async setProductStatus(id: string, status: string): Promise<void> {
+    const client = getApolloClient()
+    await client.mutate<unknown, { id: string; status: string }>({
+      mutation: SET_PRODUCT_STATUS_MUTATION,
+      variables: { id, status },
+    })
+  },
+
+  async setOfferStatus(id: string, status: string): Promise<void> {
+    const client = getApolloClient()
+    await client.mutate<unknown, { id: string; status: string }>({
+      mutation: SET_OFFER_STATUS_MUTATION,
+      variables: { id, status },
+    })
   },
 }

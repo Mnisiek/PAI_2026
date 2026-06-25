@@ -51,6 +51,13 @@ export interface Category {
   children?: Category[]
 }
 
+// Lightweight offer shape for admin management (status toggling).
+export interface AdminOffer {
+  id: string
+  sku: string
+  status: string
+}
+
 export interface Product {
   id: string
   slug: string
@@ -62,6 +69,8 @@ export interface Product {
   priceFrom: Money
   offers: Offer[]
   specs?: Spec[]
+  status?: string
+  allOffers?: AdminOffer[]
 }
 
 // A single attribute filter the user has applied (mirrors backend AttributeFilterInput).
