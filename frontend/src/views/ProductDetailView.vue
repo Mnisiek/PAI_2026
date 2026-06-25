@@ -17,6 +17,7 @@ const route = useRoute()
 const product = ref<Product | null>(null)
 const selectedOffer = ref<Offer | null>(null)
 const selectedAttributeValues = ref<Record<string, string>>({})
+const overrideImage = ref<string | null>(null)
 const isLoading = ref(true)
 const error = ref<string | null>(null)
 
@@ -82,6 +83,9 @@ const variantAxes = computed<VariantAxis[]>(() => {
 const hasVariantAxes = computed(() => variantAxes.value.length > 0)
 
 const applyOfferAttributesSelection = (offer: Offer | null): void => {
+  // A newly selected variant shows its own image (until the user clicks a thumb).
+  overrideImage.value = null
+
   if (!offer) {
     selectedAttributeValues.value = {}
     return
@@ -135,6 +139,22 @@ const displayPrice = computed(
   () => selectedOffer.value?.price.amount ?? product.value?.priceFrom.amount ?? 0,
 )
 const canAddToCart = computed(() => !!selectedOffer.value && selectedOffer.value.stock > 0)
+
+// Image gallery: the selected variant's images plus the product's main image.
+const offerImageUrls = computed(() => selectedOffer.value?.images?.map((image) => image.url) ?? [])
+const galleryImages = computed(() => {
+  const urls: string[] = []
+  for (const url of offerImageUrls.value) {
+    if (!urls.includes(url)) urls.push(url)
+  }
+  if (product.value?.mainImageUrl && !urls.includes(product.value.mainImageUrl)) {
+    urls.push(product.value.mainImageUrl)
+  }
+  return urls
+})
+const heroImage = computed(
+  () => overrideImage.value ?? offerImageUrls.value[0] ?? product.value?.mainImageUrl ?? '',
+)
 
 const loadProduct = async (): Promise<void> => {
   isLoading.value = true
@@ -191,12 +211,21 @@ useAsyncData('product-detail', loadProduct, {
 
       <BaseCard v-else-if="product" class="pdp__card">
         <div class="pdp__grid">
-          <img
-            :src="product.mainImageUrl"
-            :alt="product.name"
-            class="pdp__image"
-            loading="lazy"
-          />
+          <div class="pdp__media">
+            <img :src="heroImage" :alt="product.name" class="pdp__image" loading="lazy" />
+            <div v-if="galleryImages.length > 1" class="pdp__thumbs">
+              <button
+                v-for="url in galleryImages"
+                :key="url"
+                type="button"
+                class="pdp__thumb"
+                :class="{ 'pdp__thumb--active': url === heroImage }"
+                @click="overrideImage = url"
+              >
+                <img :src="url" alt="" loading="lazy" />
+              </button>
+            </div>
+          </div>
 
           <div class="pdp__info">
             <p v-if="product.brand" class="pdp__brand">{{ product.brand.name }}</p>
@@ -330,11 +359,46 @@ useAsyncData('product-detail', loadProduct, {
   padding: 1rem;
 }
 
+.pdp__media {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
 .pdp__image {
   width: 100%;
   height: 320px;
   object-fit: cover;
   border-radius: 16px;
+}
+
+.pdp__thumbs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.pdp__thumb {
+  width: 56px;
+  height: 56px;
+  border: 1px solid var(--color-border-soft);
+  border-radius: 10px;
+  overflow: hidden;
+  background: #fff;
+  cursor: pointer;
+  padding: 0;
+}
+
+.pdp__thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.pdp__thumb--active {
+  border-color: var(--color-brand-strong);
+  box-shadow: 0 0 0 2px rgba(20, 184, 166, 0.25);
 }
 
 .pdp__info {
@@ -568,8 +632,7 @@ useAsyncData('product-detail', loadProduct, {
   }
 
   .pdp__image {
-    height: 100%;
-    max-height: 460px;
+    height: 420px;
   }
 }
 

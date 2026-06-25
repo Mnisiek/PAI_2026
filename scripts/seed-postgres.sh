@@ -350,6 +350,66 @@ FROM (VALUES
 JOIN offer     o ON o.sku  = x.sku
 JOIN attribute a ON a.code = x.attr_code;
 
+-- 5c. Variant-image demo: products with several offers, each its own colour +
+-- its own image, so the product page's variant gallery has something to show.
+INSERT INTO attribute (code, name, data_type, unit, is_variant_axis) VALUES
+    ('kolor', 'Kolor', 'TEXT', NULL, TRUE);
+
+INSERT INTO category_attribute (category_id, attribute_id, filterable, required, sort_order)
+SELECT c.id, a.id, TRUE, FALSE, 5
+FROM (VALUES ('wearables'), ('obuwie')) AS x(cat_slug)
+JOIN category  c ON c.slug = x.cat_slug
+JOIN attribute a ON a.code = 'kolor';
+
+INSERT INTO product (slug, name, description, category_id, brand_id, search_text, main_image_url, status, specs, created_at, updated_at)
+SELECT x.slug, x.name, x.descr, c.id, b.id,
+       lower(x.name || ' ' || x.descr || ' ' || b.name || ' ' || c.name),
+       x.img, 'ACTIVE',
+       jsonb_build_array(
+           jsonb_build_object('key', 'Producent', 'value', b.name),
+           jsonb_build_object('key', 'Kategoria', 'value', c.name)
+       ),
+       now(), now()
+FROM (VALUES
+    ('smartwatch-color-x',  'Smartwatch Color X',  'Smartwatch w trzech kolorach do wyboru.', 'wearables', 'samsung', 'https://images.unsplash.com/photo-1546868871-7041f2a55e12?auto=format&fit=crop&w=900&q=80'),
+    ('sneakersy-color-run', 'Sneakersy Color Run', 'Sneakersy dostępne w trzech kolorach.',   'obuwie',    'nike',    'https://images.unsplash.com/photo-1542291026-7eec264c27ff?auto=format&fit=crop&w=900&q=80')
+) AS x(slug, name, descr, cat_slug, brand_slug, img)
+JOIN category c ON c.slug = x.cat_slug
+JOIN brand    b ON b.slug = x.brand_slug;
+
+INSERT INTO offer (product_id, sku, price, price_currency, stock, status, created_at, updated_at)
+SELECT p.id, x.sku, x.price, 'PLN', x.stock, 'ACTIVE', now(), now()
+FROM (VALUES
+    ('smartwatch-color-x',  'SCX-BLK', 799.00, 10),
+    ('smartwatch-color-x',  'SCX-SLV', 799.00, 8),
+    ('smartwatch-color-x',  'SCX-GLD', 849.00, 5),
+    ('sneakersy-color-run', 'SCR-BLK', 329.00, 12),
+    ('sneakersy-color-run', 'SCR-WHT', 329.00, 15),
+    ('sneakersy-color-run', 'SCR-RED', 349.00, 7)
+) AS x(slug, sku, price, stock)
+JOIN product p ON p.slug = x.slug;
+
+INSERT INTO offer_attribute_value (offer_id, attribute_id, text_value, num_value, bool_value)
+SELECT o.id, a.id, x.text_value, NULL::numeric, NULL::boolean
+FROM (VALUES
+    ('SCX-BLK', 'Czarny'), ('SCX-SLV', 'Srebrny'), ('SCX-GLD', 'Złoty'),
+    ('SCR-BLK', 'Czarny'), ('SCR-WHT', 'Biały'),   ('SCR-RED', 'Czerwony')
+) AS x(sku, text_value)
+JOIN offer     o ON o.sku  = x.sku
+JOIN attribute a ON a.code = 'kolor';
+
+INSERT INTO offer_image (offer_id, url, alt, sort_order)
+SELECT o.id, x.url, x.alt, 0
+FROM (VALUES
+    ('SCX-BLK', 'https://images.unsplash.com/photo-1546868871-7041f2a55e12?auto=format&fit=crop&w=900&q=80', 'Smartwatch czarny'),
+    ('SCX-SLV', 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?auto=format&fit=crop&w=900&q=80', 'Smartwatch srebrny'),
+    ('SCX-GLD', 'https://images.unsplash.com/photo-1579586337278-3befd40fd17a?auto=format&fit=crop&w=900&q=80', 'Smartwatch złoty'),
+    ('SCR-BLK', 'https://images.unsplash.com/photo-1542291026-7eec264c27ff?auto=format&fit=crop&w=900&q=80', 'Sneakersy czarne'),
+    ('SCR-WHT', 'https://images.unsplash.com/photo-1460353581641-37baddab0fa2?auto=format&fit=crop&w=900&q=80', 'Sneakersy białe'),
+    ('SCR-RED', 'https://images.unsplash.com/photo-1595950653106-6c9ebd614d3a?auto=format&fit=crop&w=900&q=80', 'Sneakersy czerwone')
+) AS x(sku, url, alt)
+JOIN offer o ON o.sku = x.sku;
+
 -- 6. Demo admin user (jan@example.com / demo1234). Upserts and (re)asserts the
 -- ADMIN role so the demo account can reach the admin panel.
 INSERT INTO users (username, password_hash, role)

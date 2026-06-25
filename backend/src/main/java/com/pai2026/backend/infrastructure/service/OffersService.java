@@ -78,7 +78,8 @@ public class OffersService {
         Category saved = categoryRepository.save(category);
 
         // Declared filters become filterable category_attribute rows.
-        if (input.attributes() != null) {
+        if (input.attributes()
+                != null) {
             for (CategoryAttributeInput attr : input.attributes()) {
                 if (attr == null) {
                     continue;
@@ -830,7 +831,13 @@ public class OffersService {
             return "";
         }
 
-        String normalized = Normalizer.normalize(input, Normalizer.Form.NFD)
+        // Map letters NFD cannot decompose (notably Polish ł/Ł) so they survive as
+        // their base letter instead of being stripped — e.g. "Łączność" -> "lacznosc".
+        String preprocessed = input
+                .replace('ł', 'l')
+                .replace('Ł', 'L');
+
+        String normalized = Normalizer.normalize(preprocessed, Normalizer.Form.NFD)
                 .replaceAll("\\p{M}+", "")
                 .toLowerCase(Locale.ROOT)
                 .replaceAll("[^a-z0-9]+", "-")
