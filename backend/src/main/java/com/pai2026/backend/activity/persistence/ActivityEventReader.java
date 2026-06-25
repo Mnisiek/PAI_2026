@@ -52,6 +52,18 @@ public class ActivityEventReader {
             LIMIT :limit
             """;
 
+    private static final String TOP_PRODUCT_IDS_BY_CATEGORY_SQL = """
+            SELECT product_id, count() AS count
+            FROM activity_event
+            WHERE ts >= :from AND ts < :to
+              AND category_id = :categoryId
+              AND product_id IS NOT NULL
+              AND event_type IN ('PRODUCT_DETAIL', 'ADD_TO_CART', 'PURCHASE')
+            GROUP BY product_id
+            ORDER BY count DESC
+            LIMIT :limit
+            """;
+
     private static final String EVENTS_PER_DAY_SQL = """
             SELECT toString(toDate(ts)) AS day, count() AS count
             FROM activity_event
@@ -95,6 +107,14 @@ public class ActivityEventReader {
     public List<CategoryActivity> topCategories(Instant from, Instant to, int limit) {
         return clickHouseJdbc.query(TOP_CATEGORIES_SQL, window(from, to).addValue("limit", limit), (rs, n) ->
                 new CategoryActivity(rs.getLong("category_id"), rs.getLong("count")));
+    }
+
+    /** Product ids in a category ranked by intent events (detail/cart/purchase) over the window. */
+    public List<Long> topProductIdsByCategory(Long categoryId, Instant from, Instant to, int limit) {
+        return clickHouseJdbc.query(
+                TOP_PRODUCT_IDS_BY_CATEGORY_SQL,
+                window(from, to).addValue("categoryId", categoryId).addValue("limit", limit),
+                (rs, n) -> rs.getLong("product_id"));
     }
 
     public List<DailyCount> eventsPerDay(Instant from, Instant to) {

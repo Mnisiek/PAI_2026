@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useCurrency } from '../../composables/useCurrency'
-import type { Product } from '../../types/catalog'
+import type { CarouselProduct } from '../../types/catalog'
 
 // Renders nothing when there are no products, so optional sections (e.g. "picked
 // for you") simply disappear when empty.
@@ -9,7 +9,7 @@ const props = withDefaults(
   defineProps<{
     title: string
     subtitle?: string
-    products: Product[]
+    products: CarouselProduct[]
     /** Auto-advance over time. Disable for a stationary carousel (arrows only). */
     autoRotate?: boolean
   }>(),

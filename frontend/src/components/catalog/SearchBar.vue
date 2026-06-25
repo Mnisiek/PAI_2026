@@ -41,9 +41,7 @@ const submitSearch = (): void => {
       placeholder="Szukaj po nazwie produktu lub opisie..."
     />
 
-    <button type="submit" class="search-shell__button" :disabled="loading" aria-label="Szukaj">
-      ⌕
-    </button>
+    <button type="submit" class="search-shell__button" :disabled="loading">Szukaj</button>
   </form>
 </template>
 
@@ -63,21 +61,32 @@ const submitSearch = (): void => {
 .search-shell__button {
   flex: 0 0 auto;
   align-self: stretch;
-  aspect-ratio: 1;
-  width: auto;
   border: none;
-  border-radius: 999px;
+  border-radius: 12px;
   background: var(--color-brand-strong);
   color: #fff;
+  padding: 0 1.2rem;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  font-size: 1.2rem;
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.search-shell__button:hover:not(:disabled) {
+  background: #0d6660;
 }
 
 .search-shell__button:disabled {
   cursor: wait;
   opacity: 0.75;
+}
+
+/* On phones the icon button reads awkwardly — drop it; Enter still submits. */
+@media (max-width: 640px) {
+  .search-shell__button {
+    display: none;
+  }
 }
 </style>

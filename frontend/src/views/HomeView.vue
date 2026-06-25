@@ -1,15 +1,43 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import MainLayout from '../layouts/MainLayout.vue'
 import SearchBar from '../components/catalog/SearchBar.vue'
 import CategoryNavBar from '../components/catalog/CategoryNavBar.vue'
+import HeroBanner from '../components/catalog/HeroBanner.vue'
 import ProductCarousel from '../components/catalog/ProductCarousel.vue'
 import { useCatalogStore } from '../stores/catalog.store'
+import { useAuthStore } from '../stores/auth.store'
+import { catalogService } from '../services/catalog.service'
+import type { CarouselProduct } from '../types/catalog'
 
 const catalogStore = useCatalogStore()
+const authStore = useAuthStore()
 const router = useRouter()
 const searchQuery = ref(catalogStore.searchQuery)
 const isNavigatingToOffers = ref(false)
+
+// Personalised rails — only for logged-in users, fetched client-side (the
+// queries require a bearer token, which lives in the browser).
+const recentlyViewed = ref<CarouselProduct[]>([])
+const recommended = ref<CarouselProduct[]>([])
+
+onMounted(async () => {
+  if (!authStore.isAuthenticated) {
+    return
+  }
+  const userId = authStore.user?.id ?? null
+  const sessionId = window.localStorage.getItem('pai-activity-session')
+  try {
+    const [viewed, picks] = await Promise.all([
+      catalogService.getRecentlyViewed(userId, sessionId, 8),
+      catalogService.getRecommended(userId, sessionId, 8),
+    ])
+    recentlyViewed.value = viewed
+    recommended.value = picks
+  } catch {
+    // Recommendations are best-effort; never block the home page.
+  }
+})
 
 await useAsyncData('home-init', async () => {
   await catalogStore.loadInitialData()
@@ -69,10 +97,23 @@ const applySearch = async (): Promise<void> => {
 
     <CategoryNavBar @select-category="goToCategory" />
 
+    <HeroBanner />
+
     <p v-if="errorMessage" class="home-error" role="alert">{{ errorMessage }}</p>
 
     <section v-if="hasHomeProducts" class="showcase" aria-label="Polecane i nowości">
       <div class="showcase__rows">
+        <ProductCarousel
+          title="Ostatnio oglądane"
+          subtitle="Twoje ostatnio przeglądane produkty"
+          :products="recentlyViewed"
+          :auto-rotate="false"
+        />
+        <ProductCarousel
+          title="Wybrane dla Ciebie"
+          subtitle="Na podstawie Twoich zainteresowań"
+          :products="recommended"
+        />
         <ProductCarousel
           title="Polecane"
           subtitle="Najczęściej wybierane"

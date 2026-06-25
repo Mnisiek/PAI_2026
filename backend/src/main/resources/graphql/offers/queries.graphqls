@@ -47,4 +47,10 @@ type OffersModuleQuery {
 
     "Fetch a list of retargeted products based on recent user activity stored in Redis."
     retargetedProducts(userId: String, sessionId: String, limit: Int = 5): [Product!]!
+
+    "Recently viewed/carted (not purchased) products for the current user. Requires authentication."
+    recentlyViewedProducts(userId: String, sessionId: String, limit: Int = 8): [Product!]!
+
+    "Popular products from the categories the user recently engaged with. Requires authentication."
+    recommendedProducts(userId: String, sessionId: String, limit: Int = 8): [Product!]!
 }

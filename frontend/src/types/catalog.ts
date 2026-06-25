@@ -98,6 +98,15 @@ export interface Facet {
   max?: number | null
 }
 
+// Minimal shape the product carousel needs (a full Product satisfies it too).
+export interface CarouselProduct {
+  id: string
+  slug: string
+  name: string
+  mainImageUrl: string
+  priceFrom: Money
+}
+
 export interface ProductPage {
   items: Product[]
   total: number

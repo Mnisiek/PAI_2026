@@ -1,5 +1,6 @@
 package com.pai2026.backend.infrastructure.service;
 
+import com.pai2026.backend.activity.persistence.CategoryPopularityCache;
 import com.pai2026.backend.activity.persistence.RetargetingStore;
 import com.pai2026.backend.offers.api.dto.*;
 import com.pai2026.backend.offers.domain.*;
@@ -31,6 +32,7 @@ public class OffersService {
     private final AttributeRepository attributeRepository;
     private final CategoryAttributeRepository categoryAttributeRepository;
     private final RetargetingStore retargetingStore;
+    private final CategoryPopularityCache categoryPopularityCache;
 
     @PersistenceContext
     private EntityManager entityManager;
@@ -42,7 +44,8 @@ public class OffersService {
             OfferRepository offerRepository,
             AttributeRepository attributeRepository,
             CategoryAttributeRepository categoryAttributeRepository,
-            RetargetingStore retargetingStore) {
+            RetargetingStore retargetingStore,
+            CategoryPopularityCache categoryPopularityCache) {
         this.productRepository = productRepository;
         this.categoryRepository = categoryRepository;
         this.brandRepository = brandRepository;
@@ -50,6 +53,7 @@ public class OffersService {
         this.attributeRepository = attributeRepository;
         this.categoryAttributeRepository = categoryAttributeRepository;
         this.retargetingStore = retargetingStore;
+        this.categoryPopularityCache = categoryPopularityCache;
     }
 
     @Transactional
@@ -408,6 +412,65 @@ public class OffersService {
         }
 
         return facets;
+    }
+
+    /**
+     * Products the user recently engaged with (PRODUCT_DETAIL / ADD_TO_CART) but did
+     * not purchase — the "recently viewed" rail. Most-recent first.
+     */
+    public List<Product> getRecentlyViewedProducts(String userId, String sessionId, int limit) {
+        List<Long> productIds = retargetingStore.getSignals(userId, sessionId).stream()
+                .filter(s -> "product".equals(s.targetType()))
+                .filter(s -> !"PURCHASE".equals(s.eventType()))
+                .map(RetargetingStore.RetargetingSignal::targetId)
+                .distinct()
+                .toList();
+        return loadActiveProductsInOrder(productIds, limit);
+    }
+
+    /**
+     * Popular products drawn from the categories the user engaged with — the "picked
+     * for you" rail. Popularity comes from ClickHouse via {@link CategoryPopularityCache}.
+     */
+    public List<Product> getRecommendedProducts(String userId, String sessionId, int limit) {
+        List<Long> categoryIds = retargetingStore.getSignals(userId, sessionId).stream()
+                .filter(s -> "category".equals(s.targetType()))
+                .map(RetargetingStore.RetargetingSignal::targetId)
+                .distinct()
+                .toList();
+        if (categoryIds.isEmpty()) {
+            return Collections.emptyList();
+        }
+
+        LinkedHashSet<Long> productIds = new LinkedHashSet<>();
+        for (Long categoryId : categoryIds) {
+            productIds.addAll(categoryPopularityCache.popularProductIds(categoryId, limit));
+            if (productIds.size() >= limit) {
+                break;
+            }
+        }
+        return loadActiveProductsInOrder(new ArrayList<>(productIds), limit);
+    }
+
+    /** Loads ACTIVE products for the given ids, preserving the id order, capped at limit. */
+    private List<Product> loadActiveProductsInOrder(List<Long> productIds, int limit) {
+        if (productIds.isEmpty()) {
+            return Collections.emptyList();
+        }
+        Map<Long, Product> byId = productRepository.findAllById(productIds).stream()
+                .filter(p -> "ACTIVE".equals(p.getStatus()))
+                .collect(Collectors.toMap(Product::getId, p -> p));
+        List<Product> result = new ArrayList<>();
+        for (Long id : productIds) {
+            Product product = byId.get(id);
+            if (product != null) {
+                result.add(product);
+                if (result.size() >= limit) {
+                    break;
+                }
+            }
+        }
+        return result;
     }
 
     private List<Long> getCategoryIdsRecursively(Category category) {

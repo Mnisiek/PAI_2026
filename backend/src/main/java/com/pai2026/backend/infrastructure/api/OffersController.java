@@ -90,6 +90,24 @@ public class OffersController {
         return offersService.getRetargetedProducts(userId, sessionId, limit);
     }
 
+    @SchemaMapping(typeName = "OffersModuleQuery")
+    @PreAuthorize("isAuthenticated()")
+    public List<Product> recentlyViewedProducts(
+            @Argument String userId,
+            @Argument String sessionId,
+            @Argument int limit) {
+        return offersService.getRecentlyViewedProducts(userId, sessionId, limit);
+    }
+
+    @SchemaMapping(typeName = "OffersModuleQuery")
+    @PreAuthorize("isAuthenticated()")
+    public List<Product> recommendedProducts(
+            @Argument String userId,
+            @Argument String sessionId,
+            @Argument int limit) {
+        return offersService.getRecommendedProducts(userId, sessionId, limit);
+    }
+
     // --- Product Field Resolvers ---
 
     @SchemaMapping(typeName = "Product")

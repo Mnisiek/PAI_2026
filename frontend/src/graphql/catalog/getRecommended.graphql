@@ -1,0 +1,14 @@
+query Recommended($userId: String, $sessionId: String, $limit: Int) {
+  offersModule {
+    recommendedProducts(userId: $userId, sessionId: $sessionId, limit: $limit) {
+      id
+      slug
+      name
+      mainImageUrl
+      priceFrom {
+        amount
+        currency
+      }
+    }
+  }
+}

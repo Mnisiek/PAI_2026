@@ -1,6 +1,13 @@
 import { getApolloClient } from '../apollo clients/apolloClient'
-import { GET_CATEGORIES, GET_FACETS, GET_PRODUCT, GET_PRODUCTS } from '../graphql/catalog.queries'
-import type { CatalogFilterInput, Category, Facet, Product } from '../types/catalog'
+import {
+  GET_CATEGORIES,
+  GET_FACETS,
+  GET_PRODUCT,
+  GET_PRODUCTS,
+  GET_RECENTLY_VIEWED,
+  GET_RECOMMENDED,
+} from '../graphql/catalog.queries'
+import type { CarouselProduct, CatalogFilterInput, Category, Facet, Product } from '../types/catalog'
 import { useCatalogStore } from '../stores/catalog.store'
 
 interface CategoriesResponse {
@@ -176,6 +183,41 @@ export const catalogService = {
     })
 
     return data?.offersModule.facets ?? []
+  },
+
+  // Recommendation rails (require an authenticated bearer; call client-side only).
+  async getRecentlyViewed(
+    userId: string | null,
+    sessionId: string | null,
+    limit: number,
+  ): Promise<CarouselProduct[]> {
+    const client = getApolloClient()
+    const { data } = await client.query<
+      { offersModule: { recentlyViewedProducts: CarouselProduct[] } },
+      { userId: string | null; sessionId: string | null; limit: number }
+    >({
+      query: GET_RECENTLY_VIEWED,
+      variables: { userId, sessionId, limit },
+      fetchPolicy: 'no-cache',
+    })
+    return data?.offersModule.recentlyViewedProducts ?? []
+  },
+
+  async getRecommended(
+    userId: string | null,
+    sessionId: string | null,
+    limit: number,
+  ): Promise<CarouselProduct[]> {
+    const client = getApolloClient()
+    const { data } = await client.query<
+      { offersModule: { recommendedProducts: CarouselProduct[] } },
+      { userId: string | null; sessionId: string | null; limit: number }
+    >({
+      query: GET_RECOMMENDED,
+      variables: { userId, sessionId, limit },
+      fetchPolicy: 'no-cache',
+    })
+    return data?.offersModule.recommendedProducts ?? []
   },
 
   async getProductBySlug(slug: string): Promise<Product | null> {
