@@ -23,6 +23,8 @@ export default defineNuxtConfig({
       // Override the target for containerised runs (e.g. http://backend:8080/graphql).
       proxy: process.env.NUXT_GRAPHQL_PROXY_TARGET ?? 'http://localhost:8080/graphql',
     },
+    '/admin': { ssr: false },
+    '/admin/**': { ssr: false },
   },
   compatibilityDate: '2026-06-20',
 })

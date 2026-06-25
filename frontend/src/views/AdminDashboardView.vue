@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import MainLayout from '../layouts/MainLayout.vue'
 import BaseCard from '../components/base/BaseCard.vue'
 import SkeletonLoader from '../components/base/SkeletonLoader.vue'
@@ -12,7 +12,15 @@ import type { ActivityStats } from '../types/activity'
 const stats = ref<ActivityStats | null>(null)
 const categoryNameById = ref(new Map<string, string>())
 const isLoading = ref(true)
+const isUpdating = ref(false)
 const error = ref<string | null>(null)
+
+const rangeDays = ref(7)
+const RANGE_OPTIONS = [
+  { label: 'Ostatnie 24h', days: 1 },
+  { label: 'Ostatnie 7 dni', days: 7 },
+  { label: 'Ostatnie 30 dni', days: 30 },
+]
 
 const EVENT_TYPE_LABELS: Record<string, string> = {
   VIEW: 'Wyświetlenia',
@@ -44,10 +52,20 @@ const pct = (value: number, max: number): string => `${Math.round((value / max) 
 const dayInMs = 24 * 60 * 60 * 1000
 const computeFrom = (days: number): string => new Date(Date.now() - days * dayInMs).toISOString()
 
-const loadStats = async (): Promise<void> => {
+const loadStats = async (isRangeChange = false): Promise<void> => {
+  if (isRangeChange) {
+    isUpdating.value = true
+  } else {
+    isLoading.value = true
+  }
+  error.value = null
+
   try {
     const [activityStats, categories] = await Promise.all([
-      analyticsService.getActivityStats(),
+      analyticsService.getActivityStats({
+        from: computeFrom(rangeDays.value),
+        to: new Date().toISOString(),
+      }),
       catalogService.getCategories(),
     ])
 
@@ -58,8 +76,13 @@ const loadStats = async (): Promise<void> => {
       caught instanceof Error ? caught.message : 'Nie udało się pobrać statystyk aktywności.'
   } finally {
     isLoading.value = false
+    isUpdating.value = false
   }
 }
+
+watch(rangeDays, () => {
+  void loadStats(true)
+})
 
 onMounted(() => {
   void loadStats()
@@ -92,11 +115,11 @@ onMounted(() => {
         </button>
       </div>
 
-      <SkeletonLoader v-if="pending && !stats" />
+      <SkeletonLoader v-if="isLoading && !stats" />
 
-      <div v-else-if="errorMessage" class="admin__error" role="alert">
-        <span>{{ errorMessage }}</span>
-        <button type="button" class="admin__retry" @click="() => refresh()">
+      <div v-else-if="error" class="admin__error" role="alert">
+        <span>{{ error }}</span>
+        <button type="button" class="admin__retry" @click="() => loadStats()">
           Spróbuj ponownie
         </button>
       </div>

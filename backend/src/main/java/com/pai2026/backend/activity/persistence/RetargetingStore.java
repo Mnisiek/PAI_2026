@@ -3,9 +3,12 @@ package com.pai2026.backend.activity.persistence;
 import com.pai2026.backend.activity.domain.ActivityEvent;
 import com.pai2026.backend.activity.domain.ActivityEventType;
 import java.time.Duration;
+import java.time.Instant;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.EnumSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -81,6 +84,74 @@ public class RetargetingStore {
             redis.opsForHash().expire(key, ttl, touchedFields);
         } catch (DataAccessException e) {
             log.warn("Skipped retargeting update for {} (Valkey unavailable): {}", subject, e.getMessage());
+        }
+    }
+
+    public record RetargetingSignal(String targetType, Long targetId, String eventType, java.time.Instant timestamp) {}
+
+    public List<RetargetingSignal> getSignals(String userId, String sessionId) {
+        String subject = null;
+        if (userId != null && !userId.isBlank()) {
+            subject = "user:" + userId;
+        } else if (sessionId != null && !sessionId.isBlank()) {
+            subject = "sess:" + sessionId;
+        }
+
+        if (subject == null) {
+            return Collections.emptyList();
+        }
+
+        String key = KEY_PREFIX + subject;
+        try {
+            Map<Object, Object> entries = redis.opsForHash().entries(key);
+            if (entries == null || entries.isEmpty()) {
+                return Collections.emptyList();
+            }
+
+            List<RetargetingSignal> signals = new ArrayList<>();
+            for (Map.Entry<Object, Object> entry : entries.entrySet()) {
+                String field = (String) entry.getKey();
+                String val = (String) entry.getValue();
+
+                if (field == null || val == null) {
+                    continue;
+                }
+
+                String[] valParts = val.split(":");
+                if (valParts.length < 2) {
+                    continue;
+                }
+
+                String eventType = valParts[0];
+                long timestamp;
+                try {
+                    timestamp = Long.parseLong(valParts[1]);
+                } catch (NumberFormatException e) {
+                    continue;
+                }
+
+                String[] fieldParts = field.split(":");
+                if (fieldParts.length < 2) {
+                    continue;
+                }
+                String targetType = fieldParts[0];
+                String targetIdStr = fieldParts[1];
+                long targetId;
+                try {
+                    targetId = Long.parseLong(targetIdStr);
+                } catch (NumberFormatException e) {
+                    continue;
+                }
+
+                signals.add(new RetargetingSignal(targetType, targetId, eventType, java.time.Instant.ofEpochMilli(timestamp)));
+            }
+
+            // Sort by timestamp desc (most recent first)
+            signals.sort((a, b) -> b.timestamp().compareTo(a.timestamp()));
+            return signals;
+        } catch (Exception e) {
+            log.warn("Failed to retrieve retargeting signals for {}: {}", subject, e.getMessage());
+            return Collections.emptyList();
         }
     }
 

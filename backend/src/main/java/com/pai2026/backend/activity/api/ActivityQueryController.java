@@ -13,6 +13,7 @@ import java.util.List;
 import org.springframework.graphql.data.method.annotation.Argument;
 import org.springframework.graphql.data.method.annotation.QueryMapping;
 import org.springframework.graphql.data.method.annotation.SchemaMapping;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Controller;
 
 /**
@@ -20,6 +21,7 @@ import org.springframework.stereotype.Controller;
  * {@code Query.activityModule}. Serves dashboard aggregates from ClickHouse.
  */
 @Controller
+@PreAuthorize("hasRole('ADMIN')")
 public class ActivityQueryController {
 
     private final ActivityAnalyticsService analytics;

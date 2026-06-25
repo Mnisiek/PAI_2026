@@ -7,5 +7,6 @@
 
     <include file="db/changelog/01-create-users-table.sql" relativeToChangelogFile="false"/>
     <include file="db/changelog/02-create-offers-tables.sql" relativeToChangelogFile="false"/>
+    <include file="db/changelog/03-add-role-to-users.sql" relativeToChangelogFile="false"/>
 
 </databaseChangeLog>

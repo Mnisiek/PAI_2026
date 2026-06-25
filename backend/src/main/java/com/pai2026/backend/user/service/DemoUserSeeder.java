@@ -19,9 +19,29 @@ public class DemoUserSeeder implements CommandLineRunner {
 
     @Override
     public void run(String... args) {
-        if (userRepository.findByUsername("jan@example.com").isEmpty()) {
-            User demoUser = new User("jan@example.com", passwordEncoder.encode("demo1234"));
-            userRepository.save(demoUser);
-        }
+        userRepository.findByUsername("jan@example.com").ifPresentOrElse(
+            user -> {
+                if (!"ADMIN".equals(user.getRole())) {
+                    user.setRole("ADMIN");
+                    userRepository.save(user);
+                }
+            },
+            () -> {
+                User adminUser = new User("jan@example.com", passwordEncoder.encode("demo1234"), "ADMIN");
+                userRepository.save(adminUser);
+            }
+        );
+        userRepository.findByUsername("adam@example.com").ifPresentOrElse(
+            user -> {
+                if (!"CUSTOMER".equals(user.getRole())) {
+                    user.setRole("CUSTOMER");
+                    userRepository.save(user);
+                }
+            },
+            () -> {
+                User customerUser = new User("adam@example.com", passwordEncoder.encode("demo1234"), "CUSTOMER");
+                userRepository.save(customerUser);
+            }
+        );
     }
 }

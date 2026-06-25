@@ -36,7 +36,7 @@ class AuthControllerTest {
 
         when(userRepository.findByUsername("jan@example.com")).thenReturn(Optional.of(user));
         when(passwordEncoder.matches("demo1234", "bcrypt_hash")).thenReturn(true);
-        when(jwtService.generateToken("jan@example.com")).thenReturn("mocked_jwt_token");
+        when(jwtService.generateToken("jan@example.com", "CUSTOMER")).thenReturn("mocked_jwt_token");
 
         String mutation = """
                 mutation {
@@ -46,6 +46,7 @@ class AuthControllerTest {
                       id
                       name
                       email
+                      role
                     }
                   }
                 }
@@ -56,6 +57,7 @@ class AuthControllerTest {
                 .path("login.token").entity(String.class).isEqualTo("mocked_jwt_token")
                 .path("login.user.id").entity(String.class).isEqualTo("42")
                 .path("login.user.name").entity(String.class).isEqualTo("Jan")
-                .path("login.user.email").entity(String.class).isEqualTo("jan@example.com");
+                .path("login.user.email").entity(String.class).isEqualTo("jan@example.com")
+                .path("login.user.role").entity(String.class).isEqualTo("CUSTOMER");
     }
 }
