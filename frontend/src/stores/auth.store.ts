@@ -73,6 +73,7 @@ export const useAuthStore = defineStore('auth', {
 
   getters: {
     isAuthenticated: (state): boolean => Boolean(state.user && state.token),
+    isAdmin: (state): boolean => state.user?.role === 'ADMIN',
   },
 
   actions: {
@@ -115,6 +116,27 @@ export const useAuthStore = defineStore('auth', {
       this.token = null
       this.error = null
       persistAuthState({ user: null, token: null })
+    },
+
+    // Server-side permission check: re-resolves the user (and role) from the
+    // bearer token. Used to gate the admin panel. Clears state if the token is
+    // no longer valid.
+    async fetchCurrentUser(): Promise<void> {
+      if (!this.token) {
+        return
+      }
+
+      try {
+        const user = await authService.me()
+        if (user) {
+          this.user = user
+          persistAuthState({ user, token: this.token })
+        } else {
+          this.logout()
+        }
+      } catch {
+        // Network/transient error — keep the current (persisted) state.
+      }
     },
   },
 })

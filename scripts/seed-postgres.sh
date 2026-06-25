@@ -249,11 +249,11 @@ FROM (VALUES
 JOIN offer     o ON o.sku  = x.sku
 JOIN attribute a ON a.code = x.attr_code;
 
--- 6. Demo login user (jan@example.com / demo1234). Upsert so existing rows and
--- real registrations are left untouched.
-INSERT INTO users (username, password_hash)
-VALUES ('jan@example.com', crypt('demo1234', gen_salt('bf', 10)))
-ON CONFLICT (username) DO NOTHING;
+-- 6. Demo admin user (jan@example.com / demo1234). Upserts and (re)asserts the
+-- ADMIN role so the demo account can reach the admin panel.
+INSERT INTO users (username, password_hash, role)
+VALUES ('jan@example.com', crypt('demo1234', gen_salt('bf', 10)), 'ADMIN')
+ON CONFLICT (username) DO UPDATE SET role = 'ADMIN';
 
 COMMIT;
 SQL

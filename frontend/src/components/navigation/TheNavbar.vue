@@ -36,7 +36,12 @@ const openCart = (): void => {
     <div class="top-nav__actions">
       <NuxtLink class="top-nav__account-link top-nav__link--wide" to="/offers">Oferty</NuxtLink>
 
-      <NuxtLink class="top-nav__account-link top-nav__link--wide" to="/admin">Panel</NuxtLink>
+      <NuxtLink
+        v-if="authStore.isAdmin"
+        class="top-nav__account-link top-nav__link--wide"
+        to="/admin"
+        >Panel</NuxtLink
+      >
 
       <NuxtLink class="top-nav__account-link" :to="authStore.isAuthenticated ? '/' : '/login'">
         {{ accountLabel }}

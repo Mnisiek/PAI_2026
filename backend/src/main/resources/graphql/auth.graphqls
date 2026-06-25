@@ -2,6 +2,11 @@ extend type Mutation {
     login(input: LoginInput!): AuthPayload!
 }
 
+extend type Query {
+    "The currently authenticated user (from the bearer token), or null if not logged in."
+    me: User
+}
+
 input LoginInput {
     email: String!
     password: String!

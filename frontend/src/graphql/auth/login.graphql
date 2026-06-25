@@ -5,6 +5,7 @@ mutation Login($input: LoginInput!) {
       id
       name
       email
+      role
     }
   }
 }
