@@ -2,7 +2,8 @@ package com.pai2026.backend.user.api;
 
 import static org.mockito.Mockito.when;
 
-import com.pai2026.backend.service.JwtService;
+import com.pai2026.backend.infrastructure.api.AuthController;
+import com.pai2026.backend.infrastructure.service.JwtService;
 import com.pai2026.backend.user.domain.User;
 import com.pai2026.backend.user.repository.UserRepository;
 import org.junit.jupiter.api.Test;

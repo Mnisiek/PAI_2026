@@ -1,8 +1,8 @@
-package com.pai2026.backend.offers.api;
+package com.pai2026.backend.infrastructure.api;
 
 import com.pai2026.backend.offers.api.dto.*;
 import com.pai2026.backend.offers.domain.*;
-import com.pai2026.backend.offers.service.OffersService;
+import com.pai2026.backend.infrastructure.service.OffersService;
 import org.springframework.graphql.data.method.annotation.Argument;
 import org.springframework.graphql.data.method.annotation.BatchMapping;
 import org.springframework.graphql.data.method.annotation.MutationMapping;

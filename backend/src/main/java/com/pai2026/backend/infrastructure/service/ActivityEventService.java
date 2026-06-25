@@ -1,4 +1,4 @@
-package com.pai2026.backend.activity.service;
+package com.pai2026.backend.infrastructure.service;
 
 import com.pai2026.backend.activity.domain.ActivityEvent;
 import com.pai2026.backend.activity.persistence.ActivityEventWriter;

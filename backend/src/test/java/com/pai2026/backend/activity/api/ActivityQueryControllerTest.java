@@ -5,7 +5,8 @@ import static org.mockito.Mockito.when;
 
 import com.pai2026.backend.activity.api.dto.ActivitySummary;
 import com.pai2026.backend.activity.api.dto.EventTypeCount;
-import com.pai2026.backend.activity.service.ActivityAnalyticsService;
+import com.pai2026.backend.infrastructure.api.ActivityQueryController;
+import com.pai2026.backend.infrastructure.service.ActivityAnalyticsService;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -15,7 +16,7 @@ import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 
 @GraphQlTest(ActivityQueryController.class)
-@org.springframework.context.annotation.Import(com.pai2026.backend.config.SecurityConfig.class)
+@org.springframework.context.annotation.Import(com.pai2026.backend.infrastructure.config.SecurityConfig.class)
 class ActivityQueryControllerTest {
 
     @Autowired
@@ -25,7 +26,7 @@ class ActivityQueryControllerTest {
     ActivityAnalyticsService analytics;
 
     @MockitoBean
-    com.pai2026.backend.config.JwtFilter jwtFilter;
+    com.pai2026.backend.infrastructure.config.JwtFilter jwtFilter;
 
     @Test
     @WithMockUser(roles = "ADMIN")

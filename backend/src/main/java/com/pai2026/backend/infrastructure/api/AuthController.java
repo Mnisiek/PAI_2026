@@ -1,6 +1,6 @@
-package com.pai2026.backend.user.api;
+package com.pai2026.backend.infrastructure.api;
 
-import com.pai2026.backend.service.JwtService;
+import com.pai2026.backend.infrastructure.service.JwtService;
 import com.pai2026.backend.user.api.dto.AuthPayload;
 import com.pai2026.backend.user.api.dto.LoginInput;
 import com.pai2026.backend.user.api.dto.UserDto;

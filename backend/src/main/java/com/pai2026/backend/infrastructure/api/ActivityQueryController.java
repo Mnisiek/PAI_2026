@@ -1,4 +1,4 @@
-package com.pai2026.backend.activity.api;
+package com.pai2026.backend.infrastructure.api;
 
 import com.pai2026.backend.activity.api.dto.ActivityModuleQuery;
 import com.pai2026.backend.activity.api.dto.ActivitySummary;
@@ -7,7 +7,7 @@ import com.pai2026.backend.activity.api.dto.DailyCount;
 import com.pai2026.backend.activity.api.dto.DailyTypeCount;
 import com.pai2026.backend.activity.api.dto.EventTypeCount;
 import com.pai2026.backend.activity.api.dto.ProductActivity;
-import com.pai2026.backend.activity.service.ActivityAnalyticsService;
+import com.pai2026.backend.infrastructure.service.ActivityAnalyticsService;
 import java.time.Instant;
 import java.util.List;
 import org.springframework.graphql.data.method.annotation.Argument;

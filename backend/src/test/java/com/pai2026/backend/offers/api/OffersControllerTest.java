@@ -6,7 +6,8 @@ import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.any;
 import com.pai2026.backend.offers.domain.Category;
 import com.pai2026.backend.offers.domain.Product;
-import com.pai2026.backend.offers.service.OffersService;
+import com.pai2026.backend.infrastructure.api.OffersController;
+import com.pai2026.backend.infrastructure.service.OffersService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.graphql.test.autoconfigure.GraphQlTest;
@@ -17,7 +18,7 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import java.util.List;
 
 @GraphQlTest(OffersController.class)
-@org.springframework.context.annotation.Import(com.pai2026.backend.config.SecurityConfig.class)
+@org.springframework.context.annotation.Import(com.pai2026.backend.infrastructure.config.SecurityConfig.class)
 class OffersControllerTest {
 
     @Autowired
@@ -27,7 +28,7 @@ class OffersControllerTest {
     OffersService offersService;
 
     @MockitoBean
-    com.pai2026.backend.config.JwtFilter jwtFilter;
+    com.pai2026.backend.infrastructure.config.JwtFilter jwtFilter;
 
     @Test
     void getRootCategoriesResolvesSuccessfully() {

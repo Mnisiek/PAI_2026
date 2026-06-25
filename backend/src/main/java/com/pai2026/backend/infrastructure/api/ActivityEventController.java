@@ -1,10 +1,10 @@
-package com.pai2026.backend.activity.api;
+package com.pai2026.backend.infrastructure.api;
 
 import com.pai2026.backend.activity.api.dto.ActivityEventAck;
 import com.pai2026.backend.activity.api.dto.ActivityEventInput;
 import com.pai2026.backend.activity.api.dto.ActivityModuleMutation;
 import com.pai2026.backend.activity.api.mapper.ActivityEventMapper;
-import com.pai2026.backend.activity.service.ActivityEventService;
+import com.pai2026.backend.infrastructure.service.ActivityEventService;
 import java.time.Instant;
 import org.springframework.graphql.data.method.annotation.Argument;
 import org.springframework.graphql.data.method.annotation.MutationMapping;

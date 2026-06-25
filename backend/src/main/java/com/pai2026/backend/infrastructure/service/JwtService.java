@@ -1,4 +1,4 @@
-package com.pai2026.backend.service;
+package com.pai2026.backend.infrastructure.service;
 
 import com.auth0.jwt.JWT;
 import com.auth0.jwt.algorithms.Algorithm;

@@ -3,6 +3,7 @@ package com.pai2026.backend.activity.service;
 import static org.mockito.Mockito.verify;
 
 import com.pai2026.backend.activity.domain.ActivityEvent;
+import com.pai2026.backend.infrastructure.service.ActivityEventService;
 import com.pai2026.backend.activity.domain.ActivityEventType;
 import com.pai2026.backend.activity.persistence.ActivityEventWriter;
 import com.pai2026.backend.activity.persistence.RetargetingStore;

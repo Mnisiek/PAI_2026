@@ -1,4 +1,4 @@
-package com.pai2026.backend.activity.service;
+package com.pai2026.backend.infrastructure.service;
 
 import com.pai2026.backend.activity.api.dto.ActivitySummary;
 import com.pai2026.backend.activity.api.dto.CategoryActivity;

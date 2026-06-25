@@ -5,6 +5,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.pai2026.backend.activity.api.dto.ActivitySummary;
+import com.pai2026.backend.infrastructure.service.ActivityAnalyticsService;
 import com.pai2026.backend.activity.persistence.ActivityEventReader;
 import java.time.Duration;
 import java.time.Instant;

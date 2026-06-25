@@ -3,7 +3,8 @@ package com.pai2026.backend.activity.api;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.verify;
 
-import com.pai2026.backend.activity.service.ActivityEventService;
+import com.pai2026.backend.infrastructure.api.ActivityEventController;
+import com.pai2026.backend.infrastructure.service.ActivityEventService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.graphql.test.autoconfigure.GraphQlTest;

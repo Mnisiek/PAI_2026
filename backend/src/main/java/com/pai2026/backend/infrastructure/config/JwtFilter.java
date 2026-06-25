@@ -1,6 +1,6 @@
-package com.pai2026.backend.config;
+package com.pai2026.backend.infrastructure.config;
 
-import com.pai2026.backend.service.JwtService;
+import com.pai2026.backend.infrastructure.service.JwtService;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;

@@ -1,4 +1,4 @@
-package com.pai2026.backend.offers.service;
+package com.pai2026.backend.infrastructure.service;
 
 import com.pai2026.backend.activity.persistence.RetargetingStore;
 import com.pai2026.backend.offers.api.dto.*;
