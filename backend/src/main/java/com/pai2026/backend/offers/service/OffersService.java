@@ -30,6 +30,7 @@ public class OffersService {
     private final OfferRepository offerRepository;
     private final AttributeRepository attributeRepository;
     private final CategoryAttributeRepository categoryAttributeRepository;
+    private final RetargetingStore retargetingStore;
 
     @PersistenceContext
     private EntityManager entityManager;
@@ -40,13 +41,15 @@ public class OffersService {
             BrandRepository brandRepository,
             OfferRepository offerRepository,
             AttributeRepository attributeRepository,
-            CategoryAttributeRepository categoryAttributeRepository) {
+            CategoryAttributeRepository categoryAttributeRepository,
+            RetargetingStore retargetingStore) {
         this.productRepository = productRepository;
         this.categoryRepository = categoryRepository;
         this.brandRepository = brandRepository;
         this.offerRepository = offerRepository;
         this.attributeRepository = attributeRepository;
         this.categoryAttributeRepository = categoryAttributeRepository;
+        this.retargetingStore = retargetingStore;
     }
 
     @Transactional
