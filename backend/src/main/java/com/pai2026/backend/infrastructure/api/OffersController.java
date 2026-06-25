@@ -49,6 +49,18 @@ public class OffersController {
     public Offer addOffer(@Argument AddOfferInput input) {
         return offersService.addOffer(input);
     }
+
+    @MutationMapping
+    @PreAuthorize("hasRole('ADMIN')")
+    public Category updateCategory(@Argument UpdateCategoryInput input) {
+        return offersService.updateCategory(input);
+    }
+
+    @MutationMapping
+    @PreAuthorize("hasRole('ADMIN')")
+    public Product updateProduct(@Argument UpdateProductInput input) {
+        return offersService.updateProduct(input);
+    }
     @SchemaMapping(typeName = "OffersModuleQuery")
     public Product product(@Argument String slug) {
         return offersService.getProductBySlug(slug);

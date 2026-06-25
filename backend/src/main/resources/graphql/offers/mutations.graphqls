@@ -8,6 +8,27 @@ extend type Mutation {
 
     "Add a new offer (variant) to an existing product."
     addOffer(input: AddOfferInput!): Offer!
+
+    "Update an existing category's name and parent."
+    updateCategory(input: UpdateCategoryInput!): Category!
+
+    "Update an existing product's core fields (name, description, category, brand, image)."
+    updateProduct(input: UpdateProductInput!): Product!
+}
+
+input UpdateCategoryInput {
+    id: ID!
+    name: String!
+    parentId: ID
+}
+
+input UpdateProductInput {
+    id: ID!
+    name: String!
+    description: String
+    categoryId: ID!
+    brandName: String
+    imageUrl: String
 }
 
 input AddCategoryInput {

@@ -42,6 +42,7 @@ const productForm = reactive({
 })
 const productMessage = ref<string | null>(null)
 const productError = ref<string | null>(null)
+const editingProductId = ref<string | null>(null)
 
 type AttributeRow = { name: string; value: string }
 
@@ -64,26 +65,75 @@ const removeProductAttributeRow = (index: number): void => {
   productAttributes.value.splice(index, 1)
 }
 
+const resetProductForm = (): void => {
+  productForm.name = ''
+  productForm.description = ''
+  productForm.price = 0
+  productForm.imageUrl = ''
+  productForm.brandName = ''
+  productForm.sku = ''
+  productForm.stock = 0
+  productAttributes.value = [{ name: '', value: '' }]
+  editingProductId.value = null
+}
+
+const startEditProduct = (product: Product): void => {
+  editingProductId.value = product.id
+  productForm.name = product.name
+  productForm.description = product.description ?? ''
+  productForm.categoryId = product.category.id
+  productForm.brandName = product.brand?.name ?? ''
+  productForm.imageUrl = product.mainImageUrl ?? ''
+  productMessage.value = null
+  productError.value = null
+}
+
+const cancelEditProduct = (): void => {
+  resetProductForm()
+  productMessage.value = null
+  productError.value = null
+}
+
 const submitProduct = async (): Promise<void> => {
   productMessage.value = null
   productError.value = null
 
-  if (!productForm.name.trim() || !productForm.sku.trim()) {
-    productError.value = 'Nazwa i SKU są wymagane.'
-    return
-  }
-  if (productForm.price <= 0) {
-    productError.value = 'Cena musi być większa od zera.'
-    return
-  }
-
-  const cleanedAttributes = cleanAttributeRows(productAttributes.value)
-  if (cleanedAttributes.some((row) => !row.name || !row.value)) {
-    productError.value = 'Każda cecha musi mieć nazwę i wartość.'
+  if (!productForm.name.trim()) {
+    productError.value = 'Nazwa jest wymagana.'
     return
   }
 
   try {
+    if (editingProductId.value) {
+      const updated = await catalogAdminService.updateProduct({
+        id: editingProductId.value,
+        name: productForm.name.trim(),
+        description: productForm.description.trim(),
+        categoryId: productForm.categoryId,
+        brandName: productForm.brandName.trim() || undefined,
+        imageUrl: productForm.imageUrl.trim() || undefined,
+      })
+      productMessage.value = `Zaktualizowano produkt „${updated.name}".`
+      resetProductForm()
+      await refreshList()
+      return
+    }
+
+    if (!productForm.sku.trim()) {
+      productError.value = 'SKU jest wymagane.'
+      return
+    }
+    if (productForm.price <= 0) {
+      productError.value = 'Cena musi być większa od zera.'
+      return
+    }
+
+    const cleanedAttributes = cleanAttributeRows(productAttributes.value)
+    if (cleanedAttributes.some((row) => !row.name || !row.value)) {
+      productError.value = 'Każda cecha musi mieć nazwę i wartość.'
+      return
+    }
+
     const created = await catalogAdminService.addProduct({
       name: productForm.name.trim(),
       description: productForm.description.trim(),
@@ -96,17 +146,10 @@ const submitProduct = async (): Promise<void> => {
       attributes: cleanedAttributes.length > 0 ? cleanedAttributes : undefined,
     })
     productMessage.value = `Dodano produkt „${created.name}".`
-    productForm.name = ''
-    productForm.description = ''
-    productForm.price = 0
-    productForm.imageUrl = ''
-    productForm.brandName = ''
-    productForm.sku = ''
-    productForm.stock = 0
-    productAttributes.value = [{ name: '', value: '' }]
+    resetProductForm()
     await refreshList()
   } catch (caught) {
-    productError.value = caught instanceof Error ? caught.message : 'Nie udało się dodać produktu.'
+    productError.value = caught instanceof Error ? caught.message : 'Nie udało się zapisać produktu.'
   }
 }
 
@@ -220,7 +263,7 @@ const submitOffer = async (): Promise<void> => {
 
       <div class="catalog-admin__forms">
         <BaseCard class="panel">
-          <h2 class="panel__title">Dodaj produkt</h2>
+          <h2 class="panel__title">{{ editingProductId ? 'Edytuj produkt' : 'Dodaj produkt' }}</h2>
           <form class="form" @submit.prevent="submitProduct">
             <label class="form__field">
               <span>Nazwa *</span>
@@ -239,7 +282,7 @@ const submitOffer = async (): Promise<void> => {
                 aria-label="Kategoria"
               />
             </div>
-            <div class="form__row">
+            <div v-if="!editingProductId" class="form__row">
               <label class="form__field">
                 <span>Cena (PLN) *</span>
                 <input v-model.number="productForm.price" type="number" min="0" step="0.01" />
@@ -250,7 +293,7 @@ const submitOffer = async (): Promise<void> => {
               </label>
             </div>
             <div class="form__row">
-              <label class="form__field">
+              <label v-if="!editingProductId" class="form__field">
                 <span>SKU *</span>
                 <input v-model="productForm.sku" type="text" />
               </label>
@@ -264,7 +307,7 @@ const submitOffer = async (): Promise<void> => {
               <input v-model="productForm.imageUrl" type="url" placeholder="https://..." />
             </label>
 
-            <div class="form__field form__field--full">
+            <div v-if="!editingProductId" class="form__field form__field--full">
               <span>Cechy produktu</span>
               <div class="variant-attributes">
                 <div
@@ -296,7 +339,19 @@ const submitOffer = async (): Promise<void> => {
             <p v-if="productError" class="form__error">{{ productError }}</p>
             <p v-if="productMessage" class="form__ok">{{ productMessage }}</p>
 
-            <button class="form__submit" type="submit">Dodaj produkt</button>
+            <div class="form__actions">
+              <button class="form__submit" type="submit">
+                {{ editingProductId ? 'Zapisz zmiany' : 'Dodaj produkt' }}
+              </button>
+              <button
+                v-if="editingProductId"
+                type="button"
+                class="form__cancel"
+                @click="cancelEditProduct"
+              >
+                Anuluj
+              </button>
+            </div>
           </form>
         </BaseCard>
 
@@ -412,6 +467,9 @@ const submitOffer = async (): Promise<void> => {
             <span class="catalog-list__cat">{{ product.category.name }}</span>
             <span class="catalog-list__variants">{{ product.offers.length }} wariant(ów)</span>
             <span class="catalog-list__price">od {{ formatPrice(product.priceFrom.amount) }}</span>
+            <button type="button" class="catalog-list__edit" @click="startEditProduct(product)">
+              Edytuj
+            </button>
           </li>
         </ul>
       </BaseCard>
@@ -551,6 +609,43 @@ const submitOffer = async (): Promise<void> => {
   background: #0d6660;
 }
 
+.form__actions {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.form__cancel {
+  border: 1px solid var(--color-border-soft);
+  border-radius: 12px;
+  background: #fff;
+  color: var(--color-text-secondary);
+  padding: 0.6rem 1rem;
+  font-size: 0.9rem;
+  cursor: pointer;
+}
+
+.form__cancel:hover {
+  border-color: var(--color-brand-strong);
+  color: var(--color-brand-strong);
+}
+
+.catalog-list__edit {
+  justify-self: end;
+  border: 1px solid var(--color-border-soft);
+  border-radius: 999px;
+  background: #fff;
+  color: var(--color-text-secondary);
+  font-size: 0.78rem;
+  padding: 0.28rem 0.7rem;
+  cursor: pointer;
+}
+
+.catalog-list__edit:hover {
+  border-color: var(--color-brand-strong);
+  color: var(--color-brand-strong);
+}
+
 .variant-attributes {
   display: flex;
   flex-direction: column;
@@ -620,7 +715,7 @@ const submitOffer = async (): Promise<void> => {
 
 .catalog-list__row {
   display: grid;
-  grid-template-columns: minmax(0, 2fr) minmax(0, 1fr) auto auto;
+  grid-template-columns: minmax(0, 2fr) minmax(0, 1fr) auto auto auto;
   gap: 0.6rem;
   align-items: center;
   border-bottom: 1px solid var(--color-border-soft);

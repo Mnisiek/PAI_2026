@@ -1,6 +1,12 @@
 import { getApolloClient } from '../apollo clients/apolloClient'
 import { GET_CATEGORIES, GET_PRODUCTS } from '../graphql/catalog.queries'
-import { ADD_CATEGORY_MUTATION, ADD_OFFER_MUTATION, ADD_PRODUCT_MUTATION } from '../graphql/catalog.mutations'
+import {
+  ADD_CATEGORY_MUTATION,
+  ADD_OFFER_MUTATION,
+  ADD_PRODUCT_MUTATION,
+  UPDATE_CATEGORY_MUTATION,
+  UPDATE_PRODUCT_MUTATION,
+} from '../graphql/catalog.mutations'
 import type { AttributeValue, Category, Money, Offer, Product } from '../types/catalog'
 
 export interface NewProductInput {
@@ -43,6 +49,21 @@ export interface NewCategoryInput {
   attributes?: NewCategoryAttributeInput[]
 }
 
+export interface UpdateCategoryInput {
+  id: string
+  name: string
+  parentId?: string | null
+}
+
+export interface UpdateProductInput {
+  id: string
+  name: string
+  description: string
+  categoryId: string
+  brandName?: string
+  imageUrl?: string
+}
+
 interface CategoriesResponse {
   offersModule: {
     rootCategories: Category[]
@@ -67,6 +88,14 @@ interface AddProductResponse {
 
 interface AddOfferResponse {
   addOffer: Offer
+}
+
+interface UpdateCategoryResponse {
+  updateCategory: Category
+}
+
+interface UpdateProductResponse {
+  updateProduct: Product
 }
 
 const flattenCategories = (roots: Category[]): Category[] => {
@@ -158,5 +187,33 @@ export const catalogAdminService = {
     }
 
     return data.addCategory
+  },
+
+  async updateCategory(input: UpdateCategoryInput): Promise<Category> {
+    const client = getApolloClient()
+    const { data } = await client.mutate<UpdateCategoryResponse, { input: UpdateCategoryInput }>({
+      mutation: UPDATE_CATEGORY_MUTATION,
+      variables: { input },
+    })
+
+    if (!data) {
+      throw new Error('Update category mutation returned no data.')
+    }
+
+    return data.updateCategory
+  },
+
+  async updateProduct(input: UpdateProductInput): Promise<Product> {
+    const client = getApolloClient()
+    const { data } = await client.mutate<UpdateProductResponse, { input: UpdateProductInput }>({
+      mutation: UPDATE_PRODUCT_MUTATION,
+      variables: { input },
+    })
+
+    if (!data) {
+      throw new Error('Update product mutation returned no data.')
+    }
+
+    return data.updateProduct
   },
 }

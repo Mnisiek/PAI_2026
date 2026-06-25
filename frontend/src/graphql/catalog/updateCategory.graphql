@@ -1,0 +1,9 @@
+mutation UpdateCategory($input: UpdateCategoryInput!) {
+  updateCategory(input: $input) {
+    id
+    name
+    slug
+    parentId
+    isLeaf
+  }
+}

@@ -39,6 +39,7 @@ const form = reactive({
   parentId: '',
 })
 const message = ref<string | null>(null)
+const editingId = ref<string | null>(null)
 
 type FilterRow = { name: string; dataType: string }
 const filterAttributes = ref<FilterRow[]>([])
@@ -57,6 +58,28 @@ const removeFilterRow = (index: number): void => {
   filterAttributes.value.splice(index, 1)
 }
 
+const resetForm = (): void => {
+  form.name = ''
+  form.parentId = ''
+  filterAttributes.value = []
+  editingId.value = null
+}
+
+const startEdit = (category: Category): void => {
+  editingId.value = category.id
+  form.name = category.name
+  form.parentId = category.parentId ?? ''
+  filterAttributes.value = []
+  message.value = null
+  error.value = null
+}
+
+const cancelEdit = (): void => {
+  resetForm()
+  message.value = null
+  error.value = null
+}
+
 const submit = async (): Promise<void> => {
   message.value = null
   error.value = null
@@ -66,23 +89,29 @@ const submit = async (): Promise<void> => {
     return
   }
 
-  const attributes = filterAttributes.value
-    .map((row) => ({ name: row.name.trim(), dataType: row.dataType }))
-    .filter((row) => row.name)
-
   try {
-    const created = await catalogAdminService.addCategory({
-      name: form.name.trim(),
-      parentId: form.parentId || null,
-      attributes: attributes.length > 0 ? attributes : undefined,
-    })
-    message.value = `Dodano kategorię „${created.name}".`
-    form.name = ''
-    form.parentId = ''
-    filterAttributes.value = []
+    if (editingId.value) {
+      const updated = await catalogAdminService.updateCategory({
+        id: editingId.value,
+        name: form.name.trim(),
+        parentId: form.parentId || null,
+      })
+      message.value = `Zaktualizowano kategorię „${updated.name}".`
+    } else {
+      const attributes = filterAttributes.value
+        .map((row) => ({ name: row.name.trim(), dataType: row.dataType }))
+        .filter((row) => row.name)
+      const created = await catalogAdminService.addCategory({
+        name: form.name.trim(),
+        parentId: form.parentId || null,
+        attributes: attributes.length > 0 ? attributes : undefined,
+      })
+      message.value = `Dodano kategorię „${created.name}".`
+    }
+    resetForm()
     await refreshList()
   } catch (caught) {
-    error.value = caught instanceof Error ? caught.message : 'Nie udało się dodać kategorii.'
+    error.value = caught instanceof Error ? caught.message : 'Nie udało się zapisać kategorii.'
   }
 }
 </script>
@@ -101,7 +130,7 @@ const submit = async (): Promise<void> => {
 
       <div class="cat-admin__grid">
         <BaseCard class="panel">
-          <h2 class="panel__title">Dodaj kategorię</h2>
+          <h2 class="panel__title">{{ editingId ? 'Edytuj kategorię' : 'Dodaj kategorię' }}</h2>
           <form class="form" @submit.prevent="submit">
             <label class="form__field">
               <span>Nazwa *</span>
@@ -118,7 +147,7 @@ const submit = async (): Promise<void> => {
               />
             </div>
 
-            <div class="form__field">
+            <div v-if="!editingId" class="form__field">
               <span>Dostępne filtry</span>
               <div class="filter-defs">
                 <div
@@ -146,7 +175,14 @@ const submit = async (): Promise<void> => {
             <p v-if="error" class="form__error">{{ error }}</p>
             <p v-if="message" class="form__ok">{{ message }}</p>
 
-            <button class="form__submit" type="submit">Dodaj kategorię</button>
+            <div class="form__actions">
+              <button class="form__submit" type="submit">
+                {{ editingId ? 'Zapisz zmiany' : 'Dodaj kategorię' }}
+              </button>
+              <button v-if="editingId" type="button" class="form__cancel" @click="cancelEdit">
+                Anuluj
+              </button>
+            </div>
           </form>
         </BaseCard>
 
@@ -160,6 +196,7 @@ const submit = async (): Promise<void> => {
               <span class="cat-list__badge" :class="{ 'cat-list__badge--leaf': category.isLeaf }">
                 {{ category.isLeaf ? 'liść' : 'grupa' }}
               </span>
+              <button type="button" class="cat-list__edit" @click="startEdit(category)">Edytuj</button>
             </li>
           </ul>
         </BaseCard>
@@ -266,6 +303,43 @@ const submit = async (): Promise<void> => {
   background: #0d6660;
 }
 
+.form__actions {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.form__cancel {
+  border: 1px solid var(--color-border-soft);
+  border-radius: 12px;
+  background: #fff;
+  color: var(--color-text-secondary);
+  padding: 0.6rem 1rem;
+  font-size: 0.9rem;
+  cursor: pointer;
+}
+
+.form__cancel:hover {
+  border-color: var(--color-brand-strong);
+  color: var(--color-brand-strong);
+}
+
+.cat-list__edit {
+  justify-self: end;
+  border: 1px solid var(--color-border-soft);
+  border-radius: 999px;
+  background: #fff;
+  color: var(--color-text-secondary);
+  font-size: 0.78rem;
+  padding: 0.28rem 0.7rem;
+  cursor: pointer;
+}
+
+.cat-list__edit:hover {
+  border-color: var(--color-brand-strong);
+  color: var(--color-brand-strong);
+}
+
 .filter-defs {
   display: flex;
   flex-direction: column;
@@ -313,7 +387,7 @@ const submit = async (): Promise<void> => {
 
 .cat-list__row {
   display: grid;
-  grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr) auto;
+  grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr) auto auto;
   gap: 0.6rem;
   align-items: center;
   border-bottom: 1px solid var(--color-border-soft);
@@ -351,7 +425,7 @@ const submit = async (): Promise<void> => {
 
 @media (max-width: 560px) {
   .cat-list__row {
-    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-columns: minmax(0, 1fr) auto auto;
   }
 
   .filter-defs__row {

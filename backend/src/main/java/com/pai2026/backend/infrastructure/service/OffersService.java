@@ -166,6 +166,55 @@ public class OffersService {
         return offerRepository.save(offer);
     }
 
+    @Transactional
+    public Category updateCategory(UpdateCategoryInput input) {
+        Long id = parseId(input.id(), "Invalid category id.");
+        Category category = categoryRepository.findByIdAndIsActiveTrue(id)
+                .orElseThrow(() -> new IllegalArgumentException("Category not found."));
+
+        category.setName(requireText(input.name(), "Category name is required."));
+
+        Category parent = null;
+        if (input.parentId() != null && !input.parentId().isBlank()) {
+            Long parentId = parseId(input.parentId(), "Invalid parentId.");
+            if (parentId.equals(id)) {
+                throw new IllegalArgumentException("Category cannot be its own parent.");
+            }
+            parent = categoryRepository.findByIdAndIsActiveTrue(parentId)
+                    .orElseThrow(() -> new IllegalArgumentException("Parent category not found."));
+            // Reject cycles: the chosen parent must not sit under this category.
+            for (Category cursor = parent; cursor != null; cursor = cursor.getParent()) {
+                if (cursor.getId().equals(id)) {
+                    throw new IllegalArgumentException("Cannot move a category under its own descendant.");
+                }
+            }
+        }
+        category.setParent(parent);
+
+        return categoryRepository.save(category);
+    }
+
+    @Transactional
+    public Product updateProduct(UpdateProductInput input) {
+        Long id = parseId(input.id(), "Invalid product id.");
+        Product product = productRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Product not found."));
+
+        String name = requireText(input.name(), "Product name is required.");
+        Long categoryId = parseId(input.categoryId(), "Invalid categoryId.");
+        Category category = categoryRepository.findByIdAndIsActiveTrue(categoryId)
+                .orElseThrow(() -> new IllegalArgumentException("Category not found."));
+
+        product.setName(name);
+        product.setDescription(trimToNull(input.description()));
+        product.setCategory(category);
+        product.setBrand(resolveOrCreateBrand(input.brandName()));
+        product.setMainImageUrl(trimToNull(input.imageUrl()));
+        product.setSearchText(buildSearchText(name, input.description(), input.brandName(), category.getName()));
+
+        return productRepository.save(product);
+    }
+
     /**
      * Attaches each attribute value to the offer (typing it by the attribute's data
      * type) and ensures the attribute is a filterable facet on the product's category.
