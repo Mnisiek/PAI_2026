@@ -4,6 +4,8 @@ import MainLayout from '../layouts/MainLayout.vue'
 import SearchBar from '../components/catalog/SearchBar.vue'
 import CategoryNavBar from '../components/catalog/CategoryNavBar.vue'
 import HeroBanner from '../components/catalog/HeroBanner.vue'
+import FeaturedProducts from '../components/catalog/FeaturedProducts.vue'
+import CategoryTiles from '../components/catalog/CategoryTiles.vue'
 import ProductCarousel from '../components/catalog/ProductCarousel.vue'
 import { useCatalogStore } from '../stores/catalog.store'
 import { useAuthStore } from '../stores/auth.store'
@@ -45,8 +47,12 @@ await useAsyncData('home-init', async () => {
 })
 
 const homeProductsList = computed(() => catalogStore.products)
-const featuredProducts = computed(() => homeProductsList.value.slice(0, 8))
+const featuredProducts = computed(() => homeProductsList.value.slice(0, 6))
 const newOffers = computed(() => homeProductsList.value.slice(0, 10))
+// "Categories for you" — shoppable (leaf) categories as tiles.
+const categoryTiles = computed(() =>
+  catalogStore.categories.filter((category) => category.isLeaf).slice(0, 8),
+)
 const hasHomeProducts = computed(() => homeProductsList.value.length > 0)
 const errorMessage = computed(() =>
   catalogStore.error && !hasHomeProducts.value ? catalogStore.error : null,
@@ -99,9 +105,21 @@ const applySearch = async (): Promise<void> => {
 
     <HeroBanner />
 
+    <CategoryTiles
+      title="Kategorie dla Ciebie"
+      subtitle="Przeglądaj popularne działy"
+      :categories="categoryTiles"
+    />
+
     <p v-if="errorMessage" class="home-error" role="alert">{{ errorMessage }}</p>
 
     <section v-if="hasHomeProducts" class="showcase" aria-label="Polecane i nowości">
+      <FeaturedProducts
+        title="Polecane"
+        subtitle="Najczęściej wybierane"
+        :products="featuredProducts"
+      />
+
       <div class="showcase__rows">
         <ProductCarousel
           title="Ostatnio oglądane"
@@ -113,12 +131,6 @@ const applySearch = async (): Promise<void> => {
           title="Wybrane dla Ciebie"
           subtitle="Na podstawie Twoich zainteresowań"
           :products="recommended"
-        />
-        <ProductCarousel
-          title="Polecane"
-          subtitle="Najczęściej wybierane"
-          :products="featuredProducts"
-          :auto-rotate="false"
         />
         <ProductCarousel title="Nowości" subtitle="Najnowsze produkty" :products="newOffers" />
       </div>
@@ -179,6 +191,12 @@ const applySearch = async (): Promise<void> => {
   background: rgba(254, 242, 242, 0.88);
   color: #991b1b;
   padding: 0.7rem 0.9rem;
+}
+
+.showcase {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
 }
 
 .showcase__rows {

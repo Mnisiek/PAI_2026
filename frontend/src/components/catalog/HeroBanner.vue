@@ -1,6 +1,9 @@
 <script setup lang="ts">
-withDefaults(
+import { computed } from 'vue'
+
+const props = withDefaults(
   defineProps<{
+    image?: string
     eyebrow?: string
     title?: string
     text?: string
@@ -8,70 +11,99 @@ withDefaults(
     ctaTo?: string
   }>(),
   {
-    eyebrow: 'Sklep online',
-    title: 'Wszystko, czego potrzebujesz — w jednym miejscu',
-    text: 'Elektronika, dom, moda i więcej. Przeglądaj kategorie i znajdź najlepsze oferty.',
-    ctaLabel: 'Przeglądaj oferty',
+    image:
+      'https://images.unsplash.com/photo-1607083206968-13611e3d76db?auto=format&fit=crop&w=1600&q=80',
+    eyebrow: 'Wyprzedaż',
+    title: 'Letnie okazje do -50%',
+    text: 'Wybrane produkty w wyjątkowych cenach — tylko przez ograniczony czas.',
+    ctaLabel: 'Zobacz oferty',
     ctaTo: '/offers',
   },
 )
+
+const backgroundStyle = computed(() => ({ backgroundImage: `url('${props.image}')` }))
 </script>
 
 <template>
-  <section class="hero-banner">
-    <p class="hero-banner__eyebrow">{{ eyebrow }}</p>
-    <h2 class="hero-banner__title">{{ title }}</h2>
-    <p class="hero-banner__text">{{ text }}</p>
-    <NuxtLink :to="ctaTo" class="hero-banner__cta">{{ ctaLabel }}</NuxtLink>
-  </section>
+  <NuxtLink :to="ctaTo" class="hero" :style="backgroundStyle">
+    <div class="hero__overlay">
+      <p class="hero__eyebrow">{{ eyebrow }}</p>
+      <h2 class="hero__title">{{ title }}</h2>
+      <p class="hero__text">{{ text }}</p>
+      <span class="hero__cta">{{ ctaLabel }}</span>
+    </div>
+  </NuxtLink>
 </template>
 
 <style scoped>
-.hero-banner {
-  border: 1px solid var(--color-border-soft);
+.hero {
+  position: relative;
+  display: block;
+  text-decoration: none;
+  min-height: clamp(240px, 40vw, 400px);
   border-radius: 24px;
-  background:
-    radial-gradient(900px 240px at 12% -40%, rgba(20, 184, 166, 0.22), transparent),
-    radial-gradient(700px 220px at 90% -30%, rgba(56, 189, 248, 0.18), transparent),
-    linear-gradient(120deg, rgba(255, 255, 255, 0.9), rgba(236, 253, 245, 0.8));
-  padding: clamp(1.2rem, 4vw, 2.4rem);
+  overflow: hidden;
+  background-color: #0f172a;
+  background-size: cover;
+  background-position: center;
   margin-bottom: 0.95rem;
 }
 
-.hero-banner__eyebrow {
-  margin: 0;
-  font-size: 0.74rem;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--color-text-muted);
-}
-
-.hero-banner__title {
-  margin: 0.4rem 0 0;
-  font-size: clamp(1.4rem, 4vw, 2.1rem);
-  line-height: 1.15;
-  color: var(--color-text-primary);
-  max-width: 34ch;
-}
-
-.hero-banner__text {
-  margin: 0.5rem 0 0;
-  color: var(--color-text-secondary);
-  max-width: 46ch;
-}
-
-.hero-banner__cta {
-  margin-top: 1rem;
-  display: inline-flex;
-  text-decoration: none;
-  border-radius: 12px;
-  background: var(--color-brand-strong);
+.hero__overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 0.35rem;
+  padding: clamp(1.2rem, 5vw, 3rem);
   color: #fff;
-  padding: 0.65rem 1.2rem;
-  font-size: 0.92rem;
+  background: linear-gradient(
+    90deg,
+    rgba(15, 23, 42, 0.78) 0%,
+    rgba(15, 23, 42, 0.45) 45%,
+    rgba(15, 23, 42, 0.05) 100%
+  );
 }
 
-.hero-banner__cta:hover {
-  background: #0d6660;
+.hero__eyebrow {
+  margin: 0;
+  font-family: var(--font-heading);
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  font-size: 0.82rem;
+  color: #fbbf24;
+}
+
+.hero__title {
+  margin: 0.3rem 0 0;
+  font-size: clamp(1.8rem, 5vw, 3rem);
+  line-height: 1.05;
+  max-width: 18ch;
+  text-shadow: 0 2px 18px rgba(0, 0, 0, 0.45);
+}
+
+.hero__text {
+  margin: 0.55rem 0 0;
+  font-size: clamp(0.9rem, 2vw, 1.05rem);
+  max-width: 38ch;
+  color: rgba(255, 255, 255, 0.92);
+}
+
+.hero__cta {
+  margin-top: 1.1rem;
+  display: inline-flex;
+  align-self: flex-start;
+  border-radius: 12px;
+  background: #fff;
+  color: var(--color-text-primary);
+  padding: 0.7rem 1.3rem;
+  font-size: 0.95rem;
+  font-weight: 600;
+}
+
+.hero:hover .hero__cta {
+  background: #fbbf24;
 }
 </style>

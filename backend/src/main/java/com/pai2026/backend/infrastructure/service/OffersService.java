@@ -438,9 +438,6 @@ public class OffersService {
                 .map(RetargetingStore.RetargetingSignal::targetId)
                 .distinct()
                 .toList();
-        if (categoryIds.isEmpty()) {
-            return Collections.emptyList();
-        }
 
         LinkedHashSet<Long> productIds = new LinkedHashSet<>();
         for (Long categoryId : categoryIds) {
@@ -449,7 +446,31 @@ public class OffersService {
                 break;
             }
         }
-        return loadActiveProductsInOrder(new ArrayList<>(productIds), limit);
+
+        List<Product> result = new ArrayList<>(loadActiveProductsInOrder(new ArrayList<>(productIds), limit));
+        // Too few popular picks (or none) — top up with random active products.
+        if (result.size() < limit) {
+            fillWithRandomProducts(result, limit);
+        }
+        return result;
+    }
+
+    /** Tops {@code result} up to {@code limit} with random ACTIVE products not already present. */
+    @SuppressWarnings("unchecked")
+    private void fillWithRandomProducts(List<Product> result, int limit) {
+        Set<Long> present = result.stream().map(Product::getId).collect(Collectors.toCollection(HashSet::new));
+        List<Product> random = entityManager.createNativeQuery(
+                        "SELECT * FROM product WHERE status = 'ACTIVE' ORDER BY random() LIMIT :lim", Product.class)
+                .setParameter("lim", limit * 3)
+                .getResultList();
+        for (Product product : random) {
+            if (result.size() >= limit) {
+                break;
+            }
+            if (present.add(product.getId())) {
+                result.add(product);
+            }
+        }
     }
 
     /** Loads ACTIVE products for the given ids, preserving the id order, capped at limit. */
