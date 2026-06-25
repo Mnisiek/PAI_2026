@@ -10,7 +10,7 @@ import ProductCarousel from '../components/catalog/ProductCarousel.vue'
 import { useCatalogStore } from '../stores/catalog.store'
 import { useAuthStore } from '../stores/auth.store'
 import { catalogService } from '../services/catalog.service'
-import type { CarouselProduct } from '../types/catalog'
+import type { CarouselProduct, Category } from '../types/catalog'
 
 const catalogStore = useCatalogStore()
 const authStore = useAuthStore()
@@ -22,23 +22,31 @@ const isNavigatingToOffers = ref(false)
 // queries require a bearer token, which lives in the browser).
 const recentlyViewed = ref<CarouselProduct[]>([])
 const recommended = ref<CarouselProduct[]>([])
+const personalCategories = ref<Category[]>([])
 
-onMounted(async () => {
+onMounted(() => {
   if (!authStore.isAuthenticated) {
     return
   }
   const userId = authStore.user?.id ?? null
   const sessionId = window.localStorage.getItem('pai-activity-session')
-  try {
-    const [viewed, picks] = await Promise.all([
-      catalogService.getRecentlyViewed(userId, sessionId, 8),
-      catalogService.getRecommended(userId, sessionId, 8),
-    ])
-    recentlyViewed.value = viewed
-    recommended.value = picks
-  } catch {
-    // Recommendations are best-effort; never block the home page.
+
+  // Each rail is fetched independently — one failing query must not blank the
+  // others (recommendations are best-effort and never block the page).
+  const load = async <T>(promise: Promise<T>, apply: (value: T) => void): Promise<void> => {
+    try {
+      apply(await promise)
+    } catch {
+      // ignore — leave this rail empty
+    }
   }
+
+  void load(catalogService.getRecentlyViewed(userId, sessionId, 8), (v) => (recentlyViewed.value = v))
+  void load(catalogService.getRecommended(userId, sessionId, 8), (v) => (recommended.value = v))
+  void load(
+    catalogService.getRecommendedCategories(userId, sessionId, 8),
+    (v) => (personalCategories.value = v),
+  )
 })
 
 await useAsyncData('home-init', async () => {
@@ -47,11 +55,15 @@ await useAsyncData('home-init', async () => {
 })
 
 const homeProductsList = computed(() => catalogStore.products)
-const featuredProducts = computed(() => homeProductsList.value.slice(0, 6))
+const featuredProducts = computed(() => homeProductsList.value.slice(0, 5))
 const newOffers = computed(() => homeProductsList.value.slice(0, 10))
-// "Categories for you" — shoppable (leaf) categories as tiles.
-const categoryTiles = computed(() =>
+// "Categories for you" — personalised (retargeted → popular → random) for logged-in
+// users; falls back to generic shoppable (leaf) categories otherwise.
+const fallbackCategories = computed(() =>
   catalogStore.categories.filter((category) => category.isLeaf).slice(0, 8),
+)
+const categoryTiles = computed(() =>
+  personalCategories.value.length ? personalCategories.value : fallbackCategories.value,
 )
 const hasHomeProducts = computed(() => homeProductsList.value.length > 0)
 const errorMessage = computed(() =>

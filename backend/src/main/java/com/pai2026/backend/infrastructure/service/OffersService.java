@@ -473,6 +473,63 @@ public class OffersService {
         }
     }
 
+    /**
+     * Categories tailored to the user: retargeted categories first, then popular ones
+     * (ClickHouse), then random active categories — so the rail is never empty.
+     */
+    public List<Category> getRecommendedCategories(String userId, String sessionId, int limit) {
+        LinkedHashMap<Long, Category> picked = new LinkedHashMap<>();
+
+        // 1. Retargeted categories (recency order).
+        List<Long> retargeted = retargetingStore.getSignals(userId, sessionId).stream()
+                .filter(s -> "category".equals(s.targetType()))
+                .map(RetargetingStore.RetargetingSignal::targetId)
+                .distinct()
+                .toList();
+        addCategoriesByIds(picked, retargeted, limit);
+
+        // 2. Popular categories (ClickHouse, cached).
+        if (picked.size() < limit) {
+            addCategoriesByIds(picked, categoryPopularityCache.popularCategoryIds(limit * 2), limit);
+        }
+
+        // 3. Random active categories.
+        if (picked.size() < limit) {
+            @SuppressWarnings("unchecked")
+            List<Category> random = entityManager.createNativeQuery(
+                            "SELECT * FROM category WHERE is_active = true ORDER BY random() LIMIT :lim",
+                            Category.class)
+                    .setParameter("lim", limit * 3)
+                    .getResultList();
+            for (Category category : random) {
+                if (picked.size() >= limit) {
+                    break;
+                }
+                picked.putIfAbsent(category.getId(), category);
+            }
+        }
+
+        return new ArrayList<>(picked.values());
+    }
+
+    private void addCategoriesByIds(LinkedHashMap<Long, Category> picked, List<Long> ids, int limit) {
+        if (ids.isEmpty()) {
+            return;
+        }
+        Map<Long, Category> byId = categoryRepository.findAllById(ids).stream()
+                .filter(Category::isActive)
+                .collect(Collectors.toMap(Category::getId, category -> category));
+        for (Long id : ids) {
+            if (picked.size() >= limit) {
+                break;
+            }
+            Category category = byId.get(id);
+            if (category != null) {
+                picked.putIfAbsent(id, category);
+            }
+        }
+    }
+
     /** Loads ACTIVE products for the given ids, preserving the id order, capped at limit. */
     private List<Product> loadActiveProductsInOrder(List<Long> productIds, int limit) {
         if (productIds.isEmpty()) {

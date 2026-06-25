@@ -24,9 +24,22 @@ const openCart = (): void => {
 
 <template>
   <header class="top-nav">
-    <NuxtLink class="top-nav__brand-wrap" to="/offers">
-      <p class="top-nav__badge">E-commerce</p>
-      <h1 class="top-nav__brand">Oferty i kategorie</h1>
+    <NuxtLink class="top-nav__logo" to="/" aria-label="Strona główna — ofero">
+      <svg class="top-nav__logo-mark" viewBox="0 0 32 32" aria-hidden="true">
+        <path
+          d="M8.4 12h15.2a2 2 0 0 1 1.99 2.2l-.93 9.6A3 3 0 0 1 21.68 26.5H10.32a3 3 0 0 1-2.98-2.7L6.4 14.2A2 2 0 0 1 8.4 12Z"
+          fill="currentColor"
+        />
+        <path
+          d="M12 12.5v-1.6a4 4 0 0 1 8 0v1.6"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2.3"
+          stroke-linecap="round"
+        />
+        <circle cx="16" cy="18.6" r="2.3" fill="#fff" />
+      </svg>
+      <span class="top-nav__logo-word">ofero</span>
     </NuxtLink>
 
     <div v-if="hasSearchSlot" class="top-nav__search-wrap">
@@ -34,13 +47,11 @@ const openCart = (): void => {
     </div>
 
     <div class="top-nav__actions">
-      <NuxtLink class="top-nav__account-link top-nav__link--wide" to="/offers">Oferty</NuxtLink>
-
       <NuxtLink
         v-if="authStore.isAdmin"
         class="top-nav__account-link top-nav__link--wide"
         to="/admin"
-        >Panel</NuxtLink
+        >Panel administracyjny</NuxtLink
       >
 
       <NuxtLink class="top-nav__account-link" :to="authStore.isAuthenticated ? '/' : '/login'">
@@ -121,25 +132,26 @@ const openCart = (): void => {
   font-size: 0.75rem;
 }
 
-.top-nav__badge {
-  margin: 0;
-  font-size: 0.76rem;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--color-text-muted);
-}
-
-.top-nav__brand {
-  margin: 0.36rem 0 0;
-  font-family: var(--font-heading);
-  font-size: clamp(1.5rem, 4vw, 2rem);
-  line-height: 1.1;
-  color: var(--color-text-primary);
-}
-
-.top-nav__brand-wrap {
-  display: block;
+.top-nav__logo {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55rem;
   text-decoration: none;
+  color: var(--color-brand-strong);
+}
+
+.top-nav__logo-mark {
+  width: 32px;
+  height: 32px;
+  flex-shrink: 0;
+}
+
+.top-nav__logo-word {
+  font-family: var(--font-heading);
+  font-weight: 700;
+  font-size: 1.5rem;
+  letter-spacing: -0.01em;
+  color: var(--color-text-primary);
 }
 
 /* Declutter on phones: drop the badge and the secondary text links, keep the
@@ -150,13 +162,8 @@ const openCart = (): void => {
     gap: 0.75rem;
   }
 
-  .top-nav__badge {
-    display: none;
-  }
-
-  .top-nav__brand {
-    margin-top: 0;
-    font-size: 1.2rem;
+  .top-nav__logo-word {
+    font-size: 1.3rem;
   }
 
   .top-nav__link--wide {

@@ -108,6 +108,15 @@ public class OffersController {
         return offersService.getRecommendedProducts(userId, sessionId, limit);
     }
 
+    @SchemaMapping(typeName = "OffersModuleQuery")
+    @PreAuthorize("isAuthenticated()")
+    public List<Category> recommendedCategories(
+            @Argument String userId,
+            @Argument String sessionId,
+            @Argument int limit) {
+        return offersService.getRecommendedCategories(userId, sessionId, limit);
+    }
+
     // --- Product Field Resolvers ---
 
     @SchemaMapping(typeName = "Product")

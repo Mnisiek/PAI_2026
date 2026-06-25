@@ -85,7 +85,7 @@ const { formatPrice } = useCurrency()
 
 .featured__image {
   width: 100%;
-  height: 200px;
+  height: 150px;
   object-fit: cover;
   display: block;
 }
@@ -115,23 +115,29 @@ const { formatPrice } = useCurrency()
 }
 
 @media (min-width: 1050px) {
+  /* Fixed-height collage: one big lead (2×2) + four small, in a bounded band. */
   .featured__grid {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    grid-template-rows: 184px 184px;
   }
 
-  /* The first pick is the hero: wider and taller. */
+  .featured__card {
+    height: 100%;
+  }
+
+  .featured__image {
+    flex: 1 1 auto;
+    height: auto;
+    min-height: 0;
+  }
+
   .featured__card--lead {
     grid-column: span 2;
     grid-row: span 2;
   }
 
-  .featured__card--lead .featured__image {
-    height: 100%;
-    min-height: 320px;
-  }
-
   .featured__card--lead .featured__name {
-    font-size: 1.2rem;
+    font-size: 1.1rem;
   }
 }
 </style>

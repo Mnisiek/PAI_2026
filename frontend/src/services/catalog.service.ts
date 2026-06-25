@@ -6,6 +6,7 @@ import {
   GET_PRODUCTS,
   GET_RECENTLY_VIEWED,
   GET_RECOMMENDED,
+  GET_RECOMMENDED_CATEGORIES,
 } from '../graphql/catalog.queries'
 import type { CarouselProduct, CatalogFilterInput, Category, Facet, Product } from '../types/catalog'
 import { useCatalogStore } from '../stores/catalog.store'
@@ -218,6 +219,23 @@ export const catalogService = {
       fetchPolicy: 'no-cache',
     })
     return data?.offersModule.recommendedProducts ?? []
+  },
+
+  async getRecommendedCategories(
+    userId: string | null,
+    sessionId: string | null,
+    limit: number,
+  ): Promise<Category[]> {
+    const client = getApolloClient()
+    const { data } = await client.query<
+      { offersModule: { recommendedCategories: Category[] } },
+      { userId: string | null; sessionId: string | null; limit: number }
+    >({
+      query: GET_RECOMMENDED_CATEGORIES,
+      variables: { userId, sessionId, limit },
+      fetchPolicy: 'no-cache',
+    })
+    return (data?.offersModule.recommendedCategories ?? []).map(normalizeCategory)
   },
 
   async getProductBySlug(slug: string): Promise<Product | null> {

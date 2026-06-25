@@ -4,6 +4,12 @@ export default defineNuxtConfig({
   srcDir: 'src/',
   modules: ['@pinia/nuxt'],
   css: ['~/style.css'],
+  app: {
+    head: {
+      title: 'ofero',
+      link: [{ rel: 'icon', type: 'image/svg+xml', href: '/favicon.svg' }],
+    },
+  },
   experimental: {
     appManifest: false,
   },

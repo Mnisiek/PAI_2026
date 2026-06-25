@@ -53,4 +53,7 @@ type OffersModuleQuery {
 
     "Popular products from the categories the user recently engaged with. Requires authentication."
     recommendedProducts(userId: String, sessionId: String, limit: Int = 8): [Product!]!
+
+    "Categories tailored to the user (retargeted → popular → random fallback). Requires authentication."
+    recommendedCategories(userId: String, sessionId: String, limit: Int = 8): [Category!]!
 }

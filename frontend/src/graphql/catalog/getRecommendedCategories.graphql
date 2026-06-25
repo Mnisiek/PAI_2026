@@ -1,0 +1,11 @@
+query RecommendedCategories($userId: String, $sessionId: String, $limit: Int) {
+  offersModule {
+    recommendedCategories(userId: $userId, sessionId: $sessionId, limit: $limit) {
+      id
+      name
+      slug
+      parentId
+      isLeaf
+    }
+  }
+}
