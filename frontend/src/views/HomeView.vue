@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
 import MainLayout from '../layouts/MainLayout.vue'
-import SearchBar from '../components/catalog/SearchBar.vue'
+import SearchBar from '../components/navigation/SearchBar.vue'
 import CategoryNavBar from '../components/catalog/CategoryNavBar.vue'
 import HeroBanner from '../components/catalog/HeroBanner.vue'
 import FeaturedProducts from '../components/catalog/FeaturedProducts.vue'

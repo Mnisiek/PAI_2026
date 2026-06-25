@@ -6,5 +6,5 @@ export default defineNuxtPlugin(() => {
   const cartStore = useCartStore()
 
   authStore.hydrateFromStorage()
-  cartStore.hydrateFromStorage()
+  cartStore.hydrateFromStorage(authStore.user?.id ?? null)
 })

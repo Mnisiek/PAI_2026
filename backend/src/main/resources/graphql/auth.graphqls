@@ -1,5 +1,6 @@
 extend type Mutation {
-    login(input: LoginInput!): AuthPayload!
+    login(input: LoginInput!): AuthPayload
+    register(input: RegisterInput!): AuthPayload
 }
 
 extend type Query {
@@ -8,6 +9,11 @@ extend type Query {
 }
 
 input LoginInput {
+    email: String!
+    password: String!
+}
+
+input RegisterInput {
     email: String!
     password: String!
 }

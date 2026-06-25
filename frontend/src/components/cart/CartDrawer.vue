@@ -57,7 +57,7 @@ const increaseQuantity = (productId: string): void => {
             :disabled="isEmpty"
             @click="cartStore.checkout"
           >
-            Mock checkout
+            Dostawa i płatność
           </button>
         </footer>
       </aside>
