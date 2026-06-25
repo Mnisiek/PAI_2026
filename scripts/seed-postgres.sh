@@ -249,6 +249,107 @@ FROM (VALUES
 JOIN offer     o ON o.sku  = x.sku
 JOIN attribute a ON a.code = x.attr_code;
 
+-- 5b. Extra demo catalog: a fuller shop with 2 products per leaf category and
+-- varied attribute values, so filters have multiple options to narrow on.
+INSERT INTO brand (name, slug, logo_url, description, is_active) VALUES
+    ('LG',   'lg',   NULL, 'LG products',     TRUE),
+    ('Bose', 'bose', NULL, 'Bose audio',      TRUE),
+    ('Nike', 'nike', NULL, 'Nike sportswear', TRUE),
+    ('IKEA', 'ikea', NULL, 'IKEA home',       TRUE);
+
+INSERT INTO product (slug, name, description, category_id, brand_id, search_text, main_image_url, status, specs, created_at, updated_at)
+SELECT x.slug, x.name, x.descr, c.id, b.id,
+       lower(x.name || ' ' || x.descr || ' ' || b.name || ' ' || c.name),
+       x.img, 'ACTIVE',
+       jsonb_build_array(
+           jsonb_build_object('key', 'Producent', 'value', b.name),
+           jsonb_build_object('key', 'Kategoria', 'value', c.name)
+       ),
+       now(), now()
+FROM (VALUES
+    ('sluchawki-przewodowe-clear', 'Słuchawki przewodowe Clear', 'Czysty dźwięk, kabel 2 m.',        'audio',       'sony',    'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?auto=format&fit=crop&w=900&q=80'),
+    ('sluchawki-dokanalowe-air',   'Słuchawki dokanałowe Air',   'Bluetooth 5.3, etui ładujące.',    'audio',       'bose',    'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?auto=format&fit=crop&w=900&q=80'),
+    ('monitor-24-cali-fhd',        'Monitor 24 cale FHD',        'Panel IPS, 75 Hz.',                'monitory',    'lg',      'https://images.unsplash.com/photo-1527443224154-c4a3942d3acf?auto=format&fit=crop&w=900&q=80'),
+    ('monitor-32-cali-4k',         'Monitor 32 cale 4K',         'UHD, 144 Hz, HDR.',                'monitory',    'samsung', 'https://images.unsplash.com/photo-1527443224154-c4a3942d3acf?auto=format&fit=crop&w=900&q=80'),
+    ('blender-turbo',              'Blender Turbo',              'Kielich 1,5 l, mocny silnik.',     'kuchnia',     'generic', 'https://images.unsplash.com/photo-1511920170033-f8396924c348?auto=format&fit=crop&w=900&q=80'),
+    ('czajnik-speed',              'Czajnik Speed',              'Szybkie gotowanie wody.',          'kuchnia',     'generic', 'https://images.unsplash.com/photo-1511920170033-f8396924c348?auto=format&fit=crop&w=900&q=80'),
+    ('plafon-led-sky',             'Plafon LED Sky',             'Jasne, zimne światło.',            'oswietlenie', 'generic', 'https://images.unsplash.com/photo-1549187774-b4e9b0445b41?auto=format&fit=crop&w=900&q=80'),
+    ('kinkiet-loft',               'Kinkiet Loft',               'Industrialny styl.',               'oswietlenie', 'generic', 'https://images.unsplash.com/photo-1549187774-b4e9b0445b41?auto=format&fit=crop&w=900&q=80'),
+    ('mata-eco',                   'Mata Eco',                   'Cienka mata, lekka.',              'fitness',     'generic', 'https://images.unsplash.com/photo-1599058917212-d750089bc07e?auto=format&fit=crop&w=900&q=80'),
+    ('mata-comfort',               'Mata Comfort',               'Gruba, maksimum amortyzacji.',     'fitness',     'generic', 'https://images.unsplash.com/photo-1599058917212-d750089bc07e?auto=format&fit=crop&w=900&q=80'),
+    ('opaska-fit-lite',            'Opaska Fit Lite',            'Lekka opaska sportowa.',           'wearables',   'samsung', 'https://images.unsplash.com/photo-1546868871-7041f2a55e12?auto=format&fit=crop&w=900&q=80'),
+    ('smartwatch-pro-x',           'Smartwatch Pro X',           'GPS, EKG, ekran AMOLED.',          'wearables',   'samsung', 'https://images.unsplash.com/photo-1546868871-7041f2a55e12?auto=format&fit=crop&w=900&q=80'),
+    ('kurtka-puchowa-alpine',      'Kurtka puchowa Alpine',      'Ciepła kurtka na zimę.',           'okrycia',     'nike',    'https://images.unsplash.com/photo-1551232864-3f0890e580d9?auto=format&fit=crop&w=900&q=80'),
+    ('plaszcz-miejski-rain',       'Płaszcz miejski Rain',       'Wodoodporny płaszcz.',             'okrycia',     'generic', 'https://images.unsplash.com/photo-1551232864-3f0890e580d9?auto=format&fit=crop&w=900&q=80'),
+    ('sneakersy-street',           'Sneakersy Street',           'Miejski styl na co dzień.',        'obuwie',      'nike',    'https://images.unsplash.com/photo-1542291026-7eec264c27ff?auto=format&fit=crop&w=900&q=80'),
+    ('buty-trekkingowe-trail',     'Buty trekkingowe Trail',     'Na szlak i trudny teren.',         'obuwie',      'generic', 'https://images.unsplash.com/photo-1542291026-7eec264c27ff?auto=format&fit=crop&w=900&q=80'),
+    ('fotel-skora-lux',            'Fotel Skóra Lux',            'Skórzany fotel premium.',          'fotele',      'generic', 'https://images.unsplash.com/photo-1505693416388-ac5ce068fe85?auto=format&fit=crop&w=900&q=80'),
+    ('fotel-tkanina-soft',         'Fotel Tkanina Soft',         'Miękka tapicerka.',                'fotele',      'ikea',    'https://images.unsplash.com/photo-1505693416388-ac5ce068fe85?auto=format&fit=crop&w=900&q=80'),
+    ('lampa-biurkowa-klasik',      'Lampa biurkowa Klasik',      'Klasyczny włącznik.',              'lampy',       'ikea',    'https://images.unsplash.com/photo-1519710164239-da123dc03ef4?auto=format&fit=crop&w=900&q=80'),
+    ('lampa-smart-voice',          'Lampa Smart Voice',          'Sterowanie głosem.',               'lampy',       'generic', 'https://images.unsplash.com/photo-1519710164239-da123dc03ef4?auto=format&fit=crop&w=900&q=80')
+) AS x(slug, name, descr, cat_slug, brand_slug, img)
+JOIN category c ON c.slug = x.cat_slug
+JOIN brand    b ON b.slug = x.brand_slug;
+
+INSERT INTO offer (product_id, sku, price, price_currency, stock, status, created_at, updated_at)
+SELECT p.id, x.sku, x.price, 'PLN', x.stock, 'ACTIVE', now(), now()
+FROM (VALUES
+    ('sluchawki-przewodowe-clear', 'HP-CLEAR',     149.00,  20),
+    ('sluchawki-dokanalowe-air',   'HP-AIR',       399.00,  15),
+    ('monitor-24-cali-fhd',        'MON-24-FHD',   699.00,  10),
+    ('monitor-32-cali-4k',         'MON-32-4K',    2199.00, 6),
+    ('blender-turbo',              'BLEND-TURBO',  199.00,  25),
+    ('czajnik-speed',              'KETTLE-SPEED', 129.00,  30),
+    ('plafon-led-sky',             'PLAF-SKY',     159.00,  18),
+    ('kinkiet-loft',               'KINK-LOFT',    119.00,  14),
+    ('mata-eco',                   'MAT-ECO',      99.00,   40),
+    ('mata-comfort',               'MAT-COMF',     219.00,  22),
+    ('opaska-fit-lite',            'BAND-LITE',    249.00,  35),
+    ('smartwatch-pro-x',           'SMW-PRO-X',    1099.00, 9),
+    ('kurtka-puchowa-alpine',      'JAC-ALPINE',   899.00,  8),
+    ('plaszcz-miejski-rain',       'COAT-RAIN',    459.00,  12),
+    ('sneakersy-street',           'SHO-STREET',   329.00,  26),
+    ('buty-trekkingowe-trail',     'SHO-TRAIL',    549.00,  14),
+    ('fotel-skora-lux',            'CHR-LUX',      1899.00, 5),
+    ('fotel-tkanina-soft',         'CHR-SOFT',     990.00,  11),
+    ('lampa-biurkowa-klasik',      'LMP-KLASIK',   99.00,   28),
+    ('lampa-smart-voice',          'LMP-VOICE',    259.00,  16)
+) AS x(slug, sku, price, stock)
+JOIN product p ON p.slug = x.slug;
+
+INSERT INTO offer_attribute_value (offer_id, attribute_id, text_value, num_value, bool_value)
+SELECT o.id, a.id, x.text_value, x.num_value, x.bool_value
+FROM (VALUES
+    ('HP-CLEAR',     'lacznosc',       'Kabel',     NULL::numeric, NULL::boolean),
+    ('HP-CLEAR',     'redukcja-szumu', NULL,        NULL,          FALSE),
+    ('HP-AIR',       'lacznosc',       'Bluetooth', NULL,          NULL),
+    ('HP-AIR',       'redukcja-szumu', NULL,        NULL,          TRUE),
+    ('MON-24-FHD',   'przekatna',      NULL,        24,            NULL),
+    ('MON-24-FHD',   'odswiezanie',    NULL,        75,            NULL),
+    ('MON-32-4K',    'przekatna',      NULL,        32,            NULL),
+    ('MON-32-4K',    'odswiezanie',    NULL,        144,           NULL),
+    ('BLEND-TURBO',  'moc',            NULL,        800,           NULL),
+    ('KETTLE-SPEED', 'moc',            NULL,        2200,          NULL),
+    ('PLAF-SKY',     'barwa-swiatla',  'Zimna',     NULL,          NULL),
+    ('KINK-LOFT',    'barwa-swiatla',  'Neutralna', NULL,          NULL),
+    ('MAT-ECO',      'grubosc',        NULL,        4,             NULL),
+    ('MAT-COMF',     'grubosc',        NULL,        10,            NULL),
+    ('BAND-LITE',    'gps',            NULL,        NULL,          FALSE),
+    ('SMW-PRO-X',    'gps',            NULL,        NULL,          TRUE),
+    ('JAC-ALPINE',   'rozmiar',        'L',         NULL,          NULL),
+    ('JAC-ALPINE',   'wodoodporna',    NULL,        NULL,          FALSE),
+    ('COAT-RAIN',    'rozmiar',        'S',         NULL,          NULL),
+    ('COAT-RAIN',    'wodoodporna',    NULL,        NULL,          TRUE),
+    ('SHO-STREET',   'rozmiar',        '44',        NULL,          NULL),
+    ('SHO-TRAIL',    'rozmiar',        '41',        NULL,          NULL),
+    ('CHR-LUX',      'material',       'Skóra',     NULL,          NULL),
+    ('CHR-SOFT',     'material',       'Tkanina',   NULL,          NULL),
+    ('LMP-KLASIK',   'sterowanie',     'Przycisk',  NULL,          NULL),
+    ('LMP-VOICE',    'sterowanie',     'Głos',      NULL,          NULL)
+) AS x(sku, attr_code, text_value, num_value, bool_value)
+JOIN offer     o ON o.sku  = x.sku
+JOIN attribute a ON a.code = x.attr_code;
+
 -- 6. Demo admin user (jan@example.com / demo1234). Upserts and (re)asserts the
 -- ADMIN role so the demo account can reach the admin panel.
 INSERT INTO users (username, password_hash, role)

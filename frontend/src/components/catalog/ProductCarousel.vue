@@ -172,6 +172,8 @@ watch(
   border-radius: 18px;
   background: rgba(255, 255, 255, 0.82);
   padding: 0.8rem;
+  /* Fade in when it mounts — e.g. personalised rails arriving after load. */
+  animation: fadeInUp 0.45s ease both;
 }
 
 .collection__head {

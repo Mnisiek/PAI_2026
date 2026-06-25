@@ -42,6 +42,10 @@ const { formatPrice } = useCurrency()
 </template>
 
 <style scoped>
+.featured {
+  animation: fadeInUp 0.45s ease both;
+}
+
 .featured__head {
   margin-bottom: 0.7rem;
 }

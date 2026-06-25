@@ -44,6 +44,7 @@ const tileStyle = (index: number) => ({ background: GRADIENTS[index % GRADIENTS.
 <style scoped>
 .cat-tiles {
   margin-bottom: 0.95rem;
+  animation: fadeInUp 0.45s ease both;
 }
 
 .cat-tiles__head {
