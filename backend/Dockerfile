@@ -1,19 +1,6 @@
 # syntax=docker/dockerfile:1
-
-# --- Build stage: compile and package the Spring Boot jar ---
-FROM maven:3.9-eclipse-temurin-17 AS build
-WORKDIR /app
-
-# Resolve dependencies first so they cache across source-only changes.
-COPY pom.xml .
-RUN mvn -B -q dependency:go-offline
-
-COPY src ./src
-RUN mvn -B -q clean package -DskipTests
-
-# --- Runtime stage: slim JRE with just the jar ---
 FROM eclipse-temurin:17-jre
 WORKDIR /app
-COPY --from=build /app/target/*.jar app.jar
+COPY target/*.jar app.jar
 EXPOSE 8080
 ENTRYPOINT ["java", "-jar", "app.jar"]

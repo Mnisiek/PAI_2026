@@ -33,7 +33,7 @@ public class AuthController {
             throw new IllegalArgumentException("Nieprawidłowy email lub hasło.");
         }
 
-        String token = jwtService.generateToken(user.getUsername());
+        String token = jwtService.generateToken(user.getUsername(), user.getRole());
         
         // Expose username prefix as the name
         String name = user.getUsername().split("@")[0];
@@ -42,7 +42,8 @@ public class AuthController {
         UserDto userDto = new UserDto(
                 user.getId().toString(),
                 name,
-                user.getUsername()
+                user.getUsername(),
+                user.getRole()
         );
 
         return new AuthPayload(token, userDto);

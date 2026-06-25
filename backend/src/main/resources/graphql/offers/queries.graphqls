@@ -44,4 +44,7 @@ type OffersModuleQuery {
     ever shows filters that would actually return results.
     """
     facets(categorySlug: ID!, search: String, filter: ProductFilter): [Facet!]!
+
+    "Fetch a list of retargeted products based on recent user activity stored in Redis."
+    retargetedProducts(userId: String, sessionId: String, limit: Int = 5): [Product!]!
 }

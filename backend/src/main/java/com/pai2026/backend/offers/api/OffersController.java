@@ -8,6 +8,7 @@ import org.springframework.graphql.data.method.annotation.BatchMapping;
 import org.springframework.graphql.data.method.annotation.MutationMapping;
 import org.springframework.graphql.data.method.annotation.QueryMapping;
 import org.springframework.graphql.data.method.annotation.SchemaMapping;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Controller;
 
 import java.math.BigDecimal;
@@ -32,16 +33,19 @@ public class OffersController {
     }
 
     @MutationMapping
+    @PreAuthorize("hasRole('ADMIN')")
     public Category addCategory(@Argument AddCategoryInput input) {
         return offersService.addCategory(input);
     }
 
     @MutationMapping
+    @PreAuthorize("hasRole('ADMIN')")
     public Product addProduct(@Argument AddProductInput input) {
         return offersService.addProduct(input);
     }
 
     @MutationMapping
+    @PreAuthorize("hasRole('ADMIN')")
     public Offer addOffer(@Argument AddOfferInput input) {
         return offersService.addOffer(input);
     }
@@ -76,6 +80,14 @@ public class OffersController {
             @Argument String search,
             @Argument ProductFilter filter) {
         return offersService.getFacets(categorySlug, search, filter);
+    }
+
+    @SchemaMapping(typeName = "OffersModuleQuery")
+    public List<Product> retargetedProducts(
+            @Argument String userId,
+            @Argument String sessionId,
+            @Argument int limit) {
+        return offersService.getRetargetedProducts(userId, sessionId, limit);
     }
 
     // --- Product Field Resolvers ---

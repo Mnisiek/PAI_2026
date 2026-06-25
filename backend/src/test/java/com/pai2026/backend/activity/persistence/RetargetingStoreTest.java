@@ -100,4 +100,23 @@ class RetargetingStoreTest {
         long ts = Instant.parse("2026-06-19T10:00:00Z").toEpochMilli();
         verify(hashOps).put("retarget:user:user-9", "product:1", "PURCHASE:" + ts);
     }
+
+    @Test
+    void retrievesSignalsOrderedByTimestamp() {
+        doReturn(hashOps).when(redis).opsForHash();
+        RetargetingStore store = new RetargetingStore(redis, 30);
+
+        java.util.Map<Object, Object> entries = new java.util.HashMap<>();
+        entries.put("product:1", "PRODUCT_DETAIL:1718800000000");
+        entries.put("category:7", "PURCHASE:1718800000100");
+        doReturn(entries).when(hashOps).entries("retarget:user:user-9");
+
+        java.util.List<RetargetingStore.RetargetingSignal> signals = store.getSignals("user-9", null);
+
+        org.junit.jupiter.api.Assertions.assertEquals(2, signals.size());
+        org.junit.jupiter.api.Assertions.assertEquals("category", signals.get(0).targetType());
+        org.junit.jupiter.api.Assertions.assertEquals(7L, signals.get(0).targetId());
+        org.junit.jupiter.api.Assertions.assertEquals("product", signals.get(1).targetType());
+        org.junit.jupiter.api.Assertions.assertEquals(1L, signals.get(1).targetId());
+    }
 }
