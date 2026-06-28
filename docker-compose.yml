@@ -12,23 +12,10 @@ include:
   - docker/infra/docker-compose.yml
 
 services:
-  backend-build:
-    image: maven:3.9.11-eclipse-temurin-17
-    container_name: pai-backend-build
-    working_dir: /workspace
-    volumes:
-      - ./backend:/workspace
-      - maven-repo:/root/.m2
-    command: ["sh", "-c", "chmod +x mvnw && ./mvnw -DskipTests clean package"]
-    restart: "no"
-
   backend:
-    image: eclipse-temurin:17-jre
+    build:
+      context: ./backend
     container_name: pai-backend
-    working_dir: /app
-    volumes:
-      - ./backend/target:/app/target:ro
-    command: ["sh", "-c", "java -jar /app/target/*.jar"]
     environment:
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/shop_db
       SPRING_DATASOURCE_USERNAME: user
@@ -41,8 +28,6 @@ services:
     ports:
       - "8080:8080"
     depends_on:
-      backend-build:
-        condition: service_completed_successfully
       postgres:
         condition: service_healthy
       clickhouse:
@@ -81,6 +66,3 @@ services:
       timeout: 5s
       retries: 10
       start_period: 20s
-
-volumes:
-  maven-repo:
