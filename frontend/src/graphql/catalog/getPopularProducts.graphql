@@ -1,0 +1,14 @@
+query PopularProducts($limit: Int) {
+  offersModule {
+    popularProducts(limit: $limit) {
+      id
+      slug
+      name
+      mainImageUrl
+      priceFrom {
+        amount
+        currency
+      }
+    }
+  }
+}
