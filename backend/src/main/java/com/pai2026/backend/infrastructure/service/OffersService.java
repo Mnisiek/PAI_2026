@@ -588,6 +588,20 @@ public class OffersService {
         return result;
     }
 
+    /**
+     * The most-engaged products overall — the home "Najczęściej wybierane" rail.
+     * Pure global popularity (ClickHouse via {@link CategoryPopularityCache}); no
+     * personalization. Tops up with random active products if popularity is thin.
+     */
+    public List<Product> getPopularProducts(int limit) {
+        List<Long> productIds = categoryPopularityCache.popularProductIds(limit);
+        List<Product> result = new ArrayList<>(loadActiveProductsInOrder(productIds, limit));
+        if (result.size() < limit) {
+            fillWithRandomProducts(result, limit);
+        }
+        return result;
+    }
+
     /** Tops {@code result} up to {@code limit} with random ACTIVE products not already present. */
     @SuppressWarnings("unchecked")
     private void fillWithRandomProducts(List<Product> result, int limit) {

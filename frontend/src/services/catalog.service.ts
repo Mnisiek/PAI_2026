@@ -4,6 +4,7 @@ import {
   GET_FACETS,
   GET_PRODUCT,
   GET_PRODUCTS,
+  GET_POPULAR_PRODUCTS,
   GET_RECENTLY_VIEWED,
   GET_RECOMMENDED,
   GET_RECOMMENDED_CATEGORIES,
@@ -184,6 +185,20 @@ export const catalogService = {
     })
 
     return data?.offersModule.facets ?? []
+  },
+
+  // Most popular products overall — public, no auth (safe to fetch during SSR).
+  async getPopularProducts(limit: number): Promise<CarouselProduct[]> {
+    const client = getApolloClient()
+    const { data } = await client.query<
+      { offersModule: { popularProducts: CarouselProduct[] } },
+      { limit: number }
+    >({
+      query: GET_POPULAR_PRODUCTS,
+      variables: { limit },
+      fetchPolicy: 'no-cache',
+    })
+    return data?.offersModule.popularProducts ?? []
   },
 
   // Recommendation rails (require an authenticated bearer; call client-side only).

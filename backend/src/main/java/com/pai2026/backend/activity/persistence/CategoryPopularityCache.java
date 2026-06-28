@@ -27,6 +27,7 @@ import org.springframework.stereotype.Component;
 public class CategoryPopularityCache {
 
     private static final String PRODUCTS_KEY_PREFIX = "popular:products:";
+    private static final String GLOBAL_PRODUCTS_KEY = "popular:products:global";
     private static final String CATEGORIES_KEY = "popular:categories";
 
     private final StringRedisTemplate redis;
@@ -54,6 +55,16 @@ public class CategoryPopularityCache {
             Instant to = Instant.now();
             return activityEventReader.topProductIdsByCategory(
                     categoryId, to.minus(windowDays, ChronoUnit.DAYS), to, poolSize);
+        });
+        return sample(pool, limit);
+    }
+
+    /** A rotating random sample (size {@code limit}) of the most popular products overall. */
+    public List<Long> popularProductIds(int limit) {
+        List<Long> pool = cachedPool(GLOBAL_PRODUCTS_KEY, () -> {
+            Instant to = Instant.now();
+            return activityEventReader.topProductIds(
+                    to.minus(windowDays, ChronoUnit.DAYS), to, poolSize);
         });
         return sample(pool, limit);
     }

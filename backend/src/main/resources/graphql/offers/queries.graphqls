@@ -45,6 +45,9 @@ type OffersModuleQuery {
     """
     facets(categorySlug: ID!, search: String, filter: ProductFilter): [Facet!]!
 
+    "Most-engaged products overall (popular), independent of any user — powers the home 'Najczęściej wybierane' rail. Public."
+    popularProducts(limit: Int = 5): [Product!]!
+
     "Fetch a list of retargeted products based on recent user activity stored in Redis."
     retargetedProducts(userId: String, sessionId: String, limit: Int = 5): [Product!]!
 

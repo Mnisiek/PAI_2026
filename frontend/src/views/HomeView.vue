@@ -54,8 +54,15 @@ await useAsyncData('home-init', async () => {
   return true
 })
 
+// "Najczęściej wybierane" — most popular products overall (ClickHouse engagement).
+// Public, so it's fetched during SSR; the backend tops up with random products
+// if engagement data is thin, so this rail is never empty.
+const { data: popular } = await useAsyncData('home-popular', () =>
+  catalogService.getPopularProducts(5),
+)
+
 const homeProductsList = computed(() => catalogStore.products)
-const featuredProducts = computed(() => homeProductsList.value.slice(0, 5))
+const featuredProducts = computed(() => popular.value ?? [])
 const newOffers = computed(() => homeProductsList.value.slice(0, 10))
 // "Categories for you" — personalised (retargeted → popular → random) for logged-in
 // users; falls back to generic shoppable (leaf) categories otherwise.

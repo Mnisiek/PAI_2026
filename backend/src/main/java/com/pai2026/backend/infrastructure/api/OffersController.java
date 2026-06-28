@@ -113,6 +113,11 @@ public class OffersController {
     }
 
     @SchemaMapping(typeName = "OffersModuleQuery")
+    public List<Product> popularProducts(@Argument int limit) {
+        return offersService.getPopularProducts(limit);
+    }
+
+    @SchemaMapping(typeName = "OffersModuleQuery")
     public List<Product> retargetedProducts(
             @Argument String userId,
             @Argument String sessionId,
