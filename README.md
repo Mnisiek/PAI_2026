@@ -28,10 +28,11 @@ The following step-by-step guide will help you run the full development environm
 
 ### 1. Running the Infrastructure (Databases)
 To run local instances of **PostgreSQL**, **ClickHouse** and **Valkey** for host-based
-development, navigate to the main project directory and execute:
+development (apps run on your host, only the data stores in Docker), navigate to the main
+project directory and execute the infra-only compose file:
 
-```
-docker-compose up -d
+```bash
+docker compose -f docker/infra/docker-compose.yml up -d
 ```
 
 The infrastructure will spin up in the background. Make sure the containers are running
@@ -40,8 +41,8 @@ backend and frontend steps below.
 
 > **Run the whole app in containers instead?** The repo-root `docker-compose.yml` builds and
 > runs everything — frontend, backend and the data stores — with the right startup ordering
-> (`frontend → backend → {clickhouse, postgres, valkey}`). It reuses the infra defined above
-> via `include`, so you can skip steps 2 and 3:
+> (`frontend → backend → {clickhouse, postgres, valkey}`). It `include`s the infra file above,
+> so the data stores are defined in exactly one place, and you can skip steps 2, 3 and 4:
 >
 > ```bash
 > docker compose up --build
